@@ -1,0 +1,67 @@
+# ─── Python ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+.Python
+venv/
+.venv/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ─── Environment variables (NEVER commit secrets) ───────────────────────
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# ─── Node / Frontend ────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/node_modules.tar
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+
+# ─── Encrypted resume storage (NEVER commit) ────────────────────────────
+backend/data/resumes/
+
+# ─── IDE / Editor ────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ─── OS artifacts ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ─── Logs ────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Test artifacts ──────────────────────────────────────────────────────
+/tmp/
+*.cookie_jar
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+.mypy_cache/
+
+# ─── Docker ──────────────────────────────────────────────────────────────
+docker-compose.override.yml

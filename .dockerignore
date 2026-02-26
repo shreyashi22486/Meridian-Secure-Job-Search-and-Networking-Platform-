@@ -1,0 +1,37 @@
+.git
+.github
+.gitignore
+.dockerignore
+.vscode
+.idea
+
+# Python
+__pycache__
+*.pyc
+venv/
+.venv/
+backend/venv/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/node_modules.tar
+
+# Secrets
+.env
+.env.*
+backend/.env
+
+# Encrypted data
+backend/data/resumes/
+
+# Docs
+README.md
+*.md
+LICENSE
+
+# Test artifacts
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
