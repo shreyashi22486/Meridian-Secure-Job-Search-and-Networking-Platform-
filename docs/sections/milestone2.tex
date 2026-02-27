@@ -1,0 +1,273 @@
+% ═══════════════════════════════════════════════════════════════════════
+%  Section 5 — Milestone 2 (Main Deliverable)
+% ═══════════════════════════════════════════════════════════════════════
+
+\section{Milestone 2 — Authentication, Profiles, Resumes, Admin}
+\label{sec:milestone2}
+
+\textit{Deadline: February 27, 2026 (2.5\%) \quad Status: Completed}
+
+This milestone delivers five major goals: secure registration/login, TOTP-based 2FA, user profile management, encrypted resume upload, and a basic admin dashboard.
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Goal 1: Secure User Registration and Login}
+
+\subsubsection{Registration Flow}
+
+\begin{enumerate}
+    \item User submits email, password, and full name via the registration form.
+    \item \textbf{Input sanitization:} All string fields pass through an HTML sanitizer that strips \texttt{<script>}, event handlers, and dangerous attributes (XSS prevention).
+    \item \textbf{Password strength validation:} Enforces minimum 8 characters, at least one uppercase, one lowercase, one digit, and one special character. Common passwords are rejected.
+    \item \textbf{Password hashing:} The password is hashed using \textbf{Argon2id} with the following parameters:
+    \begin{itemize}
+        \item Memory cost: 65,536 KB (64 MB)
+        \item Time cost: 3 iterations
+        \item Parallelism: 4 threads
+        \item Salt: 16 bytes (auto-generated)
+    \end{itemize}
+    \item \textbf{Duplicate check:} Returns a generic error message (``Registration failed'') to prevent email enumeration.
+    \item A database session is created, and JWT tokens are issued in HttpOnly cookies.
+    \item The registration event is recorded in the audit log.
+\end{enumerate}
+
+\subsubsection{Login Flow}
+
+\begin{enumerate}
+    \item \textbf{CSRF validation:} The double-submit cookie pattern is verified (cookie value must match the \texttt{X-CSRF-Token} header).
+    \item User submits email and password.
+    \item \textbf{Account lockout check:} If the account has $\geq 5$ failed attempts, it is locked for 15 minutes.
+    \item \textbf{Timing-safe verification:} If the email doesn't exist, a dummy Argon2 hash is computed to prevent timing-based user enumeration.
+    \item \textbf{Password verification:} Argon2id verify against stored hash.
+    \item \textbf{2FA branch:} If TOTP is enabled, a short-lived temporary token (5 min TTL) is returned instead of session cookies. The user must verify with their TOTP code.
+    \item On success, a database session is created with:
+    \begin{itemize}
+        \item Device fingerprint (hashed IP + User-Agent)
+        \item Refresh token with unique JTI
+        \item Expiration timestamp
+    \end{itemize}
+    \item JWT tokens are set as HttpOnly, Secure, SameSite=Lax cookies.
+\end{enumerate}
+
+\subsubsection{JWT Token Architecture}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{p{3cm} p{4cm} p{5.5cm}}
+    \toprule
+    \textbf{Token} & \textbf{Storage} & \textbf{Properties} \\
+    \midrule
+    Access Token & HttpOnly cookie (\texttt{/}) & 15 min TTL, contains user ID, role, session ID, fingerprint \\
+    Refresh Token & HttpOnly cookie (\texttt{/api/auth/refresh}) & 24h TTL, scoped path, contains JTI for rotation \\
+    CSRF Token & Regular cookie + response body & Double-submit pattern, 1h TTL \\
+    \bottomrule
+\end{tabular}
+\caption{JWT token architecture.}
+\end{table}
+
+\subsubsection{Refresh Token Rotation with Reuse Detection}
+
+Each token refresh issues a new refresh token and invalidates the old JTI. If a previously-used JTI is presented (indicating token theft), \textbf{all sessions for that user are immediately revoked} — a security measure inspired by OAuth 2.0 best practices.
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Goal 2: TOTP Two-Factor Authentication}
+
+The platform uses \textbf{TOTP (Time-based One-Time Password)} per RFC~6238 instead of email/SMS OTP. This was chosen per instructor guidance and offers the following advantages:
+
+\begin{itemize}
+    \item \textbf{Offline operation:} Works without internet/SMS (suitable for LAN deployment)
+    \item \textbf{Standard protocol:} Compatible with Google Authenticator, Authy, Microsoft Authenticator
+    \item \textbf{No third-party dependency:} No email/SMS provider needed
+\end{itemize}
+
+\subsubsection{2FA Setup Process}
+
+\begin{enumerate}
+    \item User requests 2FA setup via \texttt{POST /api/auth/setup-2fa}.
+    \item A random Base32 secret is generated using \texttt{pyotp.random\_base32()}.
+    \item The secret is \textbf{encrypted with Fernet} (AES-128-CBC + HMAC-SHA256) before storage. The encryption key is stored in an environment variable, never in code.
+    \item A QR code is generated from the \texttt{otpauth://} provisioning URI.
+    \item The QR code is returned as a Base64-encoded PNG for the frontend to display.
+    \item The user scans the QR code with their authenticator app.
+    \item The user confirms setup by entering their first valid TOTP code via \texttt{POST /api/auth/confirm-2fa}.
+    \item Only after successful confirmation is \texttt{is\_totp\_enabled} set to \texttt{True}.
+\end{enumerate}
+
+\subsubsection{OTP Replay Prevention}
+
+To prevent replay attacks (reusing a valid OTP within the same 30-second window):
+
+\begin{itemize}
+    \item Every verified OTP code is recorded in the \texttt{used\_otps} table with its time step.
+    \item Before accepting a code, the system checks if it has been used in the current or adjacent time windows ($\pm 1$ window for clock drift tolerance).
+    \item Old records are garbage-collected (entries older than 5 minutes).
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Goal 3: User Profile Management}
+
+\subsubsection{Profile Fields}
+
+Users can manage the following profile information:
+\begin{itemize}
+    \item \textbf{Basic:} Full name, headline, location, bio
+    \item \textbf{Education:} Institution, degree, field of study, start/end year (CRUD operations)
+    \item \textbf{Experience:} Company, title, start/end date, description (CRUD operations)
+    \item \textbf{Skills:} Searchable autocomplete from a curated list of 150+ professional skills
+    \item \textbf{Avatar:} Profile picture upload (JPEG/PNG, validated with magic bytes, 2~MB limit)
+\end{itemize}
+
+\subsubsection{Input Sanitization}
+
+All text inputs pass through a sanitizer that:
+\begin{itemize}
+    \item Strips all HTML tags using \texttt{bleach.clean()} with an empty allowed tags list
+    \item Removes JavaScript event handlers (\texttt{onclick}, \texttt{onerror}, etc.)
+    \item Strips \texttt{javascript:} and \texttt{data:} URI schemes
+    \item Normalizes whitespace
+    \item Enforces maximum field lengths
+\end{itemize}
+
+\subsubsection{Avatar Security}
+
+Avatar uploads undergo multi-layer validation:
+\begin{enumerate}
+    \item File extension check (\texttt{.jpg}, \texttt{.jpeg}, \texttt{.png} only)
+    \item MIME type verification
+    \item \textbf{Magic byte validation:} First bytes must match JPEG (\texttt{FF D8 FF}) or PNG (\texttt{89 50 4E 47}) signatures
+    \item File size cap (2~MB)
+    \item UUID-based filename — the original filename never touches the filesystem
+    \item Stored outside the web root with authentication required for access
+\end{enumerate}
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Goal 4: Secure Resume Upload with Encryption at Rest}
+
+\subsubsection{Upload Pipeline}
+
+\begin{enumerate}
+    \item \textbf{File read:} The uploaded file is read into memory.
+    \item \textbf{Multi-layer PDF validation:}
+    \begin{itemize}
+        \item Extension check (\texttt{.pdf} only)
+        \item MIME type check (\texttt{application/pdf})
+        \item Magic byte check (\texttt{\%PDF-} header)
+        \item File size check (2~MB maximum)
+        \item Content scan for suspicious patterns (\texttt{/JavaScript}, \texttt{/Launch}, \texttt{/OpenAction})
+    \end{itemize}
+    \item \textbf{Fernet encryption:} The validated PDF content is encrypted using \texttt{cryptography.fernet.Fernet}:
+    \begin{itemize}
+        \item Algorithm: AES-128-CBC with PKCS7 padding
+        \item Authentication: HMAC-SHA256
+        \item Key: 256-bit URL-safe Base64 key from environment variable
+        \item Output: Fernet token prefixed with version and timestamp
+    \end{itemize}
+    \item \textbf{Storage:} Written to disk as \texttt{<uuid>.enc} — the original filename is only stored in the database.
+    \item \textbf{Metadata:} Database record stores original filename, file path, original size, encryption key version, and upload timestamp.
+\end{enumerate}
+
+\subsubsection{Download Pipeline}
+
+\begin{enumerate}
+    \item \textbf{Access control:} Only the resume owner, recruiters, and admins can download.
+    \item The encrypted file is read from disk.
+    \item \textbf{Fernet decryption:} The content is decrypted in memory.
+    \item The decrypted PDF is streamed to the client — the plaintext never touches disk.
+    \item The download event is recorded in the audit log.
+\end{enumerate}
+
+\subsubsection{Encryption Verification}
+
+Encrypted files on disk start with \texttt{gAAA} (Fernet token prefix) and are completely unreadable without the encryption key. This can be verified by examining the raw file:
+
+\begin{lstlisting}[language=bash]
+$ head -c 4 data/resumes/<uuid>.enc
+gAAA
+$ file data/resumes/<uuid>.enc
+data: ASCII text, very long lines
+\end{lstlisting}
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Goal 5: Basic Admin Dashboard}
+
+\subsubsection{Admin Capabilities}
+
+\begin{itemize}
+    \item \textbf{User Management:} List all users with pagination, filter by role
+    \item \textbf{Role Changes:} Promote/demote users (with self-modification prevention)
+    \item \textbf{Suspend/Unsuspend:} Toggle account suspension (revokes all active sessions on suspend)
+    \item \textbf{Delete Users:} Cascade deletes all associated data (resumes, sessions, OTPs) and files from disk
+    \item \textbf{Audit Logs:} View all security events with pagination and filters (by action type, by user)
+\end{itemize}
+
+\subsubsection{RBAC Enforcement}
+
+Access control is enforced via FastAPI dependency injection:
+
+\begin{lstlisting}[language=Python]
+# All admin endpoints use this dependency
+@router.get("/users")
+async def list_users(
+    admin: User = Depends(require_admin),
+    db: DBSession = Depends(get_db),
+):
+\end{lstlisting}
+
+The \texttt{require\_admin} dependency calls \texttt{get\_current\_user} (which validates JWT, fingerprint, and session) and then checks \texttt{user.role == "admin"}. Any failure returns HTTP 403.
+
+\subsubsection{Audit Log Events}
+
+The following events are logged with timestamp, user ID, IP address, and contextual details:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{p{4.5cm} p{8.5cm}}
+    \toprule
+    \textbf{Event} & \textbf{Details Captured} \\
+    \midrule
+    \texttt{user\_registered} & User-Agent \\
+    \texttt{login\_success} & User-Agent \\
+    \texttt{login\_failed} & User-Agent \\
+    \texttt{login\_2fa\_required} & User-Agent \\
+    \texttt{login\_success\_2fa} & User-Agent \\
+    \texttt{2fa\_setup\_initiated} & User-Agent \\
+    \texttt{2fa\_enabled} & User-Agent \\
+    \texttt{account\_locked} & Number of failed attempts \\
+    \texttt{resume\_uploaded} & Resume ID, original filename \\
+    \texttt{resume\_downloaded} & Resume ID, owner ID \\
+    \texttt{resume\_deleted} & Resume ID \\
+    \texttt{resume\_upload\_rejected} & Rejection reason, filename \\
+    \texttt{role\_changed} & Target user, old role, new role \\
+    \texttt{user\_suspended} & Target user \\
+    \texttt{user\_deleted} & Deleted user email and ID \\
+    \texttt{avatar\_uploaded} & — \\
+    \texttt{education\_added} & Institution name \\
+    \texttt{experience\_added} & Company name \\
+    \texttt{logout} & Session ID \\
+    \texttt{session\_revoked} & Revoked session ID \\
+    \texttt{refresh\_token\_reuse\_detected} & Compromised session ID \\
+    \bottomrule
+\end{tabular}
+\caption{Audit log events captured by the system.}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Testing}
+
+An integration test script (\texttt{tests/integration\_test.sh}) validates all five goals:
+
+\begin{enumerate}
+    \item \textbf{Health checks} — Backend and frontend availability
+    \item \textbf{Auth flow} — Registration, duplicate rejection, weak password rejection, login, cookie verification, wrong password rejection
+    \item \textbf{2FA} — Setup, wrong code rejection
+    \item \textbf{Profile} — Get, update, XSS injection test, unauthenticated access rejection
+    \item \textbf{Resume} — Upload, encryption-at-rest verification, listing, download (decryption), non-PDF rejection, deletion
+    \item \textbf{Admin} — RBAC enforcement, admin login, user listing, audit log retrieval
+    \item \textbf{Security controls} — Security headers, CSRF protection, logout, post-logout access rejection
+\end{enumerate}
+
+% Placeholder for screenshots — user will provide these
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=\textwidth]{screenshots/login.png}
+%     \caption{Login page with Meridian branding.}
+% \end{figure}

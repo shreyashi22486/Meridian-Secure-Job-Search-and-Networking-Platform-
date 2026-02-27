@@ -1,258 +1,121 @@
-<p align="center">
-  <h1 align="center">🚀 Nexora — Secure Job Portal</h1>
-  <p align="center">
-    A full-stack job portal with enterprise-grade security built with FastAPI & React
-  </p>
-</p>
+# Meridian — Secure Job Search & Professional Networking Platform
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.11-blue?logo=python" alt="Python" />
-  <img src="https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react" alt="React" />
-  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker" alt="Docker" />
-</p>
+> **CSE 345/545 Foundations of Computer Security** — Course Project  
+> IIIT Delhi | February – April 2026
 
----
+## Overview
 
-## 🏗 Architecture
+**Meridian** is a full-stack secure job search and professional networking platform built with security as a first-class requirement. The platform provides encrypted resume storage, TOTP-based two-factor authentication, role-based access control, and comprehensive audit logging.
 
-```
-┌─────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│   Backend    │────▶│  PostgreSQL  │
-│  React/Vite  │     │   FastAPI    │     │     16       │
-│  (Nginx)     │◀────│  (Uvicorn)   │◀────│              │
-│   :80        │     │   :8000      │     │   :5432      │
-└─────────────┘     └──────────────┘     └──────────────┘
-```
+## Tech Stack
 
-## 🔒 Security Features
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Python 3.11 / FastAPI |
+| **Frontend** | React 18 / Vite |
+| **Database** | PostgreSQL 16 |
+| **Auth** | Argon2id + JWT (HttpOnly cookies) + TOTP 2FA |
+| **Encryption** | Fernet (AES-128-CBC + HMAC-SHA256) |
+| **CI/CD** | GitHub Actions → Docker → GHCR |
+| **Web Server** | Nginx (reverse proxy + TLS) |
 
-| Feature | Implementation |
-|---------|---------------|
-| Password Hashing | Argon2id with salt |
-| Token Auth | JWT in HttpOnly cookies |
-| 2FA | TOTP with encrypted secret storage |
-| CSRF Protection | Double-submit cookie pattern |
-| File Encryption | Fernet symmetric encryption at rest |
-| Input Sanitization | Bleach-based XSS prevention |
-| Rate Limiting | Per-IP sliding window |
-| Security Headers | CSP, HSTS, X-Frame-Options |
-| SQL Injection | SQLAlchemy ORM (parameterized queries) |
+## Security Features
 
-## 📁 Project Structure
+- **Password Hashing** — Argon2id (64 MB memory, 3 iterations)
+- **Two-Factor Auth** — TOTP (RFC 6238) with QR code setup and replay prevention
+- **Resume Encryption** — Fernet encryption at rest; decrypted in-memory on download
+- **TOTP Secret Encryption** — Fernet-encrypted before database storage
+- **Session Security** — Device fingerprinting, refresh token rotation with reuse detection
+- **Input Sanitization** — HTML stripping via bleach on all text inputs (XSS prevention)
+- **CSRF Protection** — Double-submit cookie pattern
+- **SQL Injection Prevention** — SQLAlchemy ORM with parameterized queries
+- **File Upload Security** — Extension, MIME, magic byte validation + PDF content scanning
+- **RBAC** — User / Recruiter / Admin roles enforced via dependency injection
+- **Audit Logging** — All security events logged with IP, timestamp, and contextual details
+- **Security Headers** — X-Content-Type-Options, X-Frame-Options, HSTS, Referrer-Policy
+
+## Project Structure
 
 ```
 Secure-Job-Portal/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI entry point
-│   │   ├── config.py            # Pydantic settings
-│   │   ├── database.py          # SQLAlchemy engine & session
-│   │   ├── dependencies.py      # DI: get_db, get_current_user
-│   │   ├── models/              # SQLAlchemy ORM models
-│   │   ├── schemas/             # Pydantic request/response schemas
-│   │   ├── routers/             # API route handlers
-│   │   └── security/            # Security modules
+│   │   ├── routers/          # API endpoints (auth, users, resumes, admin, profile)
+│   │   ├── models/           # SQLAlchemy ORM models
+│   │   ├── schemas/          # Pydantic schemas with sanitization
+│   │   ├── security/         # Crypto primitives (password, JWT, TOTP, encryption, CSRF)
+│   │   ├── dependencies.py   # Auth & RBAC dependency injection
+│   │   └── config.py         # Environment-based configuration
 │   ├── Dockerfile
-│   ├── requirements.txt
-│   └── .env.example
+│   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── api/client.js        # Axios instance + interceptors
-│   │   ├── context/             # AuthContext, ThemeContext
-│   │   ├── components/          # Shared UI components
-│   │   └── pages/               # Route pages
+│   │   ├── pages/            # Login, Register, Dashboard, Profile, Resumes, AdminPanel
+│   │   ├── components/       # Navbar, Icons, Toast, ConfirmDialog
+│   │   └── context/          # AuthContext, ThemeContext, ToastProvider
 │   ├── Dockerfile
-│   ├── nginx.conf
-│   └── package.json
+│   └── nginx.conf
+├── docs/                     # LaTeX documentation
+│   ├── main.tex              # Master document
+│   └── sections/             # Modular sections (intro, requirements, architecture, etc.)
+├── tests/
+│   └── integration_test.sh   # Comprehensive API test suite
+├── .github/workflows/        # CI/CD (lint, test, build, deploy)
 ├── docker-compose.yml
-├── .github/workflows/
-│   ├── ci.yml                   # Lint & test on PR
-│   └── cd.yml                   # Build & push images on merge
-├── .gitignore
-└── test_milestone2.sh           # Integration test script
+└── .env.example
 ```
 
-## 🚀 Quick Start
+## Milestones
+
+| Phase | Deadline | Status | Deliverables |
+|-------|----------|--------|-------------|
+| **M1** | Feb 13 | ✅ Done | Tech stack, HTTPS, skeleton deployment |
+| **M2** | Feb 27 | ✅ Done | Auth, TOTP 2FA, profiles, resume encryption, admin |
+| **M3** | Mar 31 | 🔜 Next | Company pages, job postings, search, messaging |
+| **M4** | Apr 30 | ⏳ Planned | PKI, virtual keyboard OTP, tamper-evident logs, attack demos |
+
+## Quick Start
 
 ### Prerequisites
+- Python 3.11+, Node.js 20+, PostgreSQL 16+
 
-- **Python 3.11+** and **pip**
-- **Node.js 20+** and **npm**
-- **PostgreSQL 16+**
-- **Docker & Docker Compose** (optional)
-
----
-
-### Option 1: Local Development
-
-**1. Clone & set up backend**
-
+### Backend
 ```bash
-git clone https://github.com/YOUR_USERNAME/Secure-Job-Portal.git
-cd Secure-Job-Portal
-
-# Set up Python virtual environment
 cd backend
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+cp ../.env.example ../.env  # Configure environment variables
 pip install -r requirements.txt
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your database credentials and generate Fernet keys:
-# python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
-
-**2. Set up PostgreSQL**
-
-```bash
-# Create the database
-createdb secure_job_portal
-# Or via psql:
-# psql -U postgres -c "CREATE DATABASE secure_job_portal;"
-```
-
-**3. Start the backend**
-
-```bash
-cd backend
-source venv/bin/activate
 uvicorn app.main:app --reload --port 8000
 ```
 
-**4. Set up & start the frontend**
-
+### Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
-# Open http://localhost:5173
 ```
 
----
-
-### Option 2: Docker Compose (recommended)
-
+### Docker
 ```bash
-# Copy and edit environment file
-cp .env.example .env
-# Edit .env with real secrets
-
-# Build and start all services
 docker compose up --build
-
-# Open http://localhost
 ```
 
-| Service    | URL                        |
-|------------|----------------------------|
-| Frontend   | http://localhost            |
-| Backend    | http://localhost:8000       |
-| API Docs   | http://localhost:8000/api/docs (debug mode only) |
-| PostgreSQL | localhost:5432              |
+## Documentation
 
-## 🖥️ Server Management (Manual Deployment)
-
-If you are running the app directly on a VM (outside Docker), use these commands to manage services:
-
-### Backend (FastAPI/Uvicorn)
-```bash
-# To stop the backend
-pkill -f uvicorn
-
-# To start the backend in the background
-cd backend
-source venv/bin/activate
-nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload > /tmp/uvicorn.log 2>&1 &
-
-# To view logs
-tail -f /tmp/uvicorn.log
-```
-
-### Frontend (React/Nginx)
-```bash
-# To rebuild the frontend after changes
-cd frontend
-npm run build
-
-# Nginx serves the 'dist' folder automatically. 
-# If you change the Nginx config:
-sudo nginx -t          # Test config
-sudo nginx -s reload   # Reload Nginx
-```
-
-## ⚙️ Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | ✅ |
-| `JWT_SECRET` | JWT signing secret (64+ chars) | ✅ |
-| `JWT_ALGORITHM` | JWT algorithm (default: HS256) | ❌ |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token TTL (default: 15) | ❌ |
-| `REFRESH_TOKEN_EXPIRE_MINUTES` | Refresh token TTL (default: 1440) | ❌ |
-| `TOTP_ENCRYPTION_KEY` | Fernet key for TOTP secrets | ✅ |
-| `FILE_ENCRYPTION_KEY` | Fernet key for resume files | ✅ |
-| `UPLOAD_DIR` | Resume upload directory | ❌ |
-| `MAX_UPLOAD_SIZE` | Max upload size in bytes | ❌ |
-| `CORS_ORIGINS` | Comma-separated allowed origins | ❌ |
-| `DEBUG` | Enable debug mode | ❌ |
-
-> **Generate Fernet keys:**
-> ```bash
-> python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-> ```
-
-## 🔄 CI/CD
-
-### Continuous Integration (on every PR)
-
-- **Backend**: Python 3.11 → Install deps → Ruff lint → Pytest (with PostgreSQL service)
-- **Frontend**: Node 20 → npm ci → ESLint → Vite build
-
-### Continuous Deployment (on merge to main)
-
-- Builds Docker images for backend and frontend
-- Pushes to GitHub Container Registry (`ghcr.io`)
-- Tagged with commit SHA and `latest`
-
-### GitHub Secrets Required
-
-| Secret | Description |
-|--------|-------------|
-| `TOTP_ENCRYPTION_KEY_TEST` | Fernet key for CI test environment |
-| `FILE_ENCRYPTION_KEY_TEST` | Fernet key for CI test environment |
-
-## 🤝 Contributing
-
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/my-feature`
-3. **Commit** your changes: `git commit -m "feat: add my feature"`
-4. **Push** to the branch: `git push origin feature/my-feature`
-5. **Open** a Pull Request against `main`
-
-### Code Style
-
-- **Backend**: Linted with [Ruff](https://github.com/astral-sh/ruff)
-- **Frontend**: Linted with [ESLint](https://eslint.org/) (React + Hooks rules)
-
-### Running Tests
+Full project documentation (SRS, architecture, milestone reports, security analysis) is available in the `docs/` directory as a LaTeX project. To compile:
 
 ```bash
-# Backend
-cd backend && source venv/bin/activate
-pytest -v
-
-# Frontend
-cd frontend
-npm run lint
-npm run build
-
-# Integration tests (requires running backend + PostgreSQL)
-bash test_milestone2.sh
+cd docs
+pdflatex main.tex
+pdflatex main.tex  # Run twice for TOC
 ```
 
-## 📄 License
+## Team
 
-This project is for educational purposes as part of the IIITD curriculum.
+| Member | GitHub |
+|--------|--------|
+| Angadjeet Singh | [@ANGADJEET](https://github.com/ANGADJEET) |
+| Harsh Kumar | [@hrsh-kr](https://github.com/hrsh-kr) |
+
+## License
+
+This project is developed for academic purposes as part of CSE 345/545 at IIIT Delhi.

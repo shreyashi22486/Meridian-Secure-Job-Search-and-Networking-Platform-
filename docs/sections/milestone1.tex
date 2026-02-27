@@ -1,0 +1,52 @@
+% ═══════════════════════════════════════════════════════════════════════
+%  Section 4 — Milestone 1
+% ═══════════════════════════════════════════════════════════════════════
+
+\section{Milestone 1 — Foundation and Setup}
+\label{sec:milestone1}
+
+\textit{Deadline: February 13, 2026 (No Credit) \quad Status: Completed}
+
+\subsection{Objectives}
+
+Milestone~1 focused on establishing the foundational infrastructure for the platform:
+
+\begin{enumerate}
+    \item Finalize the technology stack
+    \item Configure HTTPS with TLS certificates
+    \item Deploy a skeleton application on the VM
+\end{enumerate}
+
+\subsection{Deliverables}
+
+\subsubsection{Technology Stack Finalization}
+
+After evaluating multiple options, the following stack was selected:
+
+\begin{itemize}
+    \item \textbf{Backend:} FastAPI (Python) — chosen for its native async support, automatic OpenAPI documentation, and Pydantic-based input validation with built-in type safety.
+    \item \textbf{Frontend:} React 18 with Vite — chosen for component reusability, fast hot module replacement, and a rich ecosystem.
+    \item \textbf{Database:} PostgreSQL 16 — chosen for ACID compliance, native UUID type, JSONB columns for flexible audit log details, and robust security features.
+    \item \textbf{Deployment:} Docker + Nginx — containerized services with Nginx as reverse proxy and TLS terminator.
+\end{itemize}
+
+\subsubsection{HTTPS Configuration}
+
+TLS was configured on the VM using:
+\begin{itemize}
+    \item Self-signed certificates generated with OpenSSL for development
+    \item Nginx configured as a reverse proxy with TLS termination
+    \item \texttt{Strict-Transport-Security} header enabled
+    \item All HTTP traffic redirected to HTTPS
+\end{itemize}
+
+\subsubsection{Skeleton Application}
+
+A working skeleton was deployed with:
+\begin{itemize}
+    \item FastAPI backend with health check endpoint (\texttt{/api/health})
+    \item React frontend with landing page and routing
+    \item PostgreSQL database with initial schema
+    \item Docker Compose configuration for all services
+    \item \texttt{.env.example} with all required environment variables documented
+\end{itemize}

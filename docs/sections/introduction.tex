@@ -1,0 +1,37 @@
+% ═══════════════════════════════════════════════════════════════════════
+%  Section 1 — Introduction
+% ═══════════════════════════════════════════════════════════════════════
+
+\section{Introduction}
+
+\subsection{Project Overview}
+
+\textbf{Meridian} is a secure job search and professional networking platform built for the CSE~345/545 \textit{Foundations of Computer Security} course at IIIT Delhi. The platform provides end-to-end security for professional interactions, resume sharing, and job application workflows.
+
+The core design principle is \textit{security by default}: every feature is built with confidentiality, integrity, and availability as first-class requirements. Rather than retrofitting security onto an existing application, Meridian integrates cryptographic protections, access control, and audit logging into every layer of the stack.
+
+\subsection{Objectives}
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+    \item \textbf{Secure Authentication} — Argon2id password hashing, JWT tokens in HttpOnly cookies, TOTP-based two-factor authentication, and device fingerprinting.
+    \item \textbf{Data Protection} — Fernet symmetric encryption for resumes at rest, XSS/CSRF protections on all inputs, and strict access control via RBAC.
+    \item \textbf{User Experience} — A premium, modern UI built with React that doesn't sacrifice usability for security.
+    \item \textbf{Audit Trail} — Comprehensive logging of all security-relevant actions for forensic analysis.
+    \item \textbf{Scalability} — Dockerized deployment with CI/CD pipelines for consistent, reproducible builds.
+\end{enumerate}
+
+\subsection{Project Name — Meridian}
+
+The name \textit{Meridian} evokes precision and direction — a reference to the prime meridian that serves as a fixed reference point for navigation. Similarly, the platform serves as a trusted reference point in the professional networking landscape, where security and integrity guide every interaction.
+
+\subsection{Document Structure}
+
+This report is organized as follows:
+\begin{itemize}
+    \item \textbf{Section~\ref{sec:requirements}} — Software requirements specification
+    \item \textbf{Section~\ref{sec:architecture}} — System architecture and technology stack
+    \item \textbf{Section~\ref{sec:milestone1}} — Milestone 1: Foundation and setup
+    \item \textbf{Section~\ref{sec:milestone2}} — Milestone 2: Authentication, profiles, resume encryption, admin
+    \item \textbf{Section~\ref{sec:security}} — Security measures and threat mitigations
+    \item \textbf{Section~\ref{sec:roadmap}} — Future milestones and roadmap
+\end{itemize}
