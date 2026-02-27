@@ -178,7 +178,9 @@ async def register(
     db.flush()
 
     # Audit log
-    log_audit(db, "user_registered", user_id=user.id, ip_address=get_client_ip(request))
+    log_audit(db, "user_registered", user_id=user.id, 
+              ip_address=get_client_ip(request),
+              details={"user_agent": request.headers.get("User-Agent")})
 
     # Create session and return tokens
     return _create_session_and_tokens(db, user, request, response)
@@ -245,7 +247,8 @@ async def login(
 
         db.commit()
 
-        log_audit(db, "login_failed", user_id=user.id, ip_address=client_ip)
+        log_audit(db, "login_failed", user_id=user.id, ip_address=client_ip,
+                  details={"user_agent": request.headers.get("User-Agent")})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -269,7 +272,8 @@ async def login(
             expires_delta=timedelta(minutes=5),  # 5 min to complete 2FA
         )
 
-        log_audit(db, "login_2fa_required", user_id=user.id, ip_address=client_ip)
+        log_audit(db, "login_2fa_required", user_id=user.id, ip_address=client_ip,
+                  details={"user_agent": request.headers.get("User-Agent")})
 
         return LoginResponse(
             message="2FA verification required",
@@ -278,7 +282,8 @@ async def login(
         )
 
     # No 2FA — create session directly
-    log_audit(db, "login_success", user_id=user.id, ip_address=client_ip)
+    log_audit(db, "login_success", user_id=user.id, ip_address=client_ip,
+              details={"user_agent": request.headers.get("User-Agent")})
     result = _create_session_and_tokens(db, user, request, response)
 
     return LoginResponse(
@@ -328,14 +333,16 @@ async def verify_2fa(
     # Verify TOTP code (with replay prevention)
     client_ip = get_client_ip(request)
     if not verify_totp(user.totp_secret, data.code, str(user.id), db):
-        log_audit(db, "2fa_failed", user_id=user.id, ip_address=client_ip)
+        log_audit(db, "2fa_failed", user_id=user.id, ip_address=client_ip,
+                  details={"user_agent": request.headers.get("User-Agent")})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid OTP code",
         )
 
     # Success — create full session
-    log_audit(db, "login_success_2fa", user_id=user.id, ip_address=client_ip)
+    log_audit(db, "login_success_2fa", user_id=user.id, ip_address=client_ip,
+              details={"user_agent": request.headers.get("User-Agent")})
     return _create_session_and_tokens(db, user, request, response)
 
 
@@ -369,7 +376,8 @@ async def setup_2fa(
     qr_base64 = generate_qr_base64(uri)
 
     log_audit(db, "2fa_setup_initiated", user_id=current_user.id,
-              ip_address=get_client_ip(request))
+              ip_address=get_client_ip(request),
+              details={"user_agent": request.headers.get("User-Agent")})
 
     return Setup2FAResponse(
         qr_code_base64=qr_base64,
@@ -412,7 +420,8 @@ async def confirm_2fa(
     db.commit()
 
     log_audit(db, "2fa_enabled", user_id=current_user.id,
-              ip_address=get_client_ip(request))
+              ip_address=get_client_ip(request),
+              details={"user_agent": request.headers.get("User-Agent")})
 
     return TokenResponse(
         message="2FA has been enabled successfully",
@@ -566,7 +575,8 @@ async def logout(
                     db.commit()
 
                 log_audit(db, "logout", user_id=payload.get("sub"),
-                          ip_address=get_client_ip(request))
+                          ip_address=get_client_ip(request),
+                          details={"session_id": str(session_id), "user_agent": request.headers.get("User-Agent")})
         except TokenError:
             pass  # Token invalid — still clear cookies
 
