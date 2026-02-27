@@ -2,48 +2,36 @@
 %  Section 7 — Roadmap
 % ═══════════════════════════════════════════════════════════════════════
 
-\section{Future Milestones and Roadmap}
+\section{Future Milestones}
 \label{sec:roadmap}
+
+With Milestone~2 establishing the security foundation, the remaining milestones layer on collaborative features and advanced security mechanisms.
 
 \subsection{Milestone 3 — March 31, 2026 (2.5\%)}
 
-\begin{table}[H]
-\centering
-\begin{tabular}{p{1.5cm} p{5cm} p{6.5cm}}
-    \toprule
-    \textbf{Goal} & \textbf{Feature} & \textbf{Notes} \\
-    \midrule
-    M3-1 & Company pages and job postings & Company CRUD, recruiter role features \\
-    M3-2 & Job search and application workflow & Keyword search, filters, application submission \\
-    M3-3 & Application status tracking & Status pipeline: Applied → Reviewed → Offer/Rejected \\
-    M3-4 & Encrypted messaging (1:1 and group) & End-to-end encryption for private conversations \\
-    M3-5 & Initial admin logging enhancements & Expanded audit events for new features \\
-    \bottomrule
-\end{tabular}
-\caption{Milestone 3 planned deliverables.}
-\end{table}
+Milestone~3 shifts focus from individual user features to multi-user interactions:
+
+\begin{itemize}
+    \item \textbf{Company pages and job postings} — Recruiters can create company profiles and publish job listings with titles, descriptions, required skills, location, and salary.
+    \item \textbf{Job search} — Keyword search with filters for remote work, experience level, and skills.
+    \item \textbf{Application tracking} — Candidates apply with their encrypted resumes. Application status flows through Applied $\rightarrow$ Reviewed $\rightarrow$ Interviewed $\rightarrow$ Offer/Rejected.
+    \item \textbf{Encrypted messaging} — End-to-end encrypted 1:1 messaging between recruiters and candidates. The server stores only ciphertext.
+\end{itemize}
 
 \subsection{Milestone 4 — Final Evaluation — April 30, 2026}
 
-\begin{table}[H]
-\centering
-\begin{tabular}{p{1.5cm} p{5cm} p{6.5cm}}
-    \toprule
-    \textbf{Goal} & \textbf{Feature} & \textbf{Notes} \\
-    \midrule
-    M4-1 & PKI integration ($\geq 2$ functions) & Message signing, resume integrity verification, or company verification \\
-    M4-2 & OTP with virtual keyboard & Visual keyboard for high-risk actions (password reset, account deletion) \\
-    M4-3 & Tamper-evident audit logs & Hash chaining or lightweight blockchain for log integrity \\
-    M4-4 & Attack defense demonstration & SQL injection, XSS, CSRF, session attacks — with proof \\
-    M4-5 & Final demo and documentation & Complete system walkthrough and security audit \\
-    \bottomrule
-\end{tabular}
-\caption{Milestone 4 (final) planned deliverables.}
-\end{table}
-
-\subsection{Bonus Features Under Consideration}
+The final milestone adds the most security-intensive features:
 
 \begin{itemize}
-    \item \textbf{Blockchain-based audit logging (+6\%):} Tamper-evident log chain where each entry contains the hash of the previous entry, making retroactive modification detectable.
-    \item \textbf{Resume parsing and intelligent matching (+2\%):} NLP-based extraction of skills, experience, and education from uploaded PDFs to enable automated candidate–job matching.
+    \item \textbf{PKI integration} — At least two functions backed by public key infrastructure (e.g., message signing, resume integrity verification via digital signatures).
+    \item \textbf{OTP with virtual keyboard} — A visual on-screen keyboard for TOTP entry during high-risk actions (password reset, account deletion), defending against keyloggers.
+    \item \textbf{Tamper-evident audit logs} — Hash chaining where each log entry includes the hash of the previous entry, making retroactive tampering detectable.
+    \item \textbf{Attack demonstrations} — Live demonstrations of defense against SQL injection, XSS, CSRF, session fixation, and session hijacking.
+\end{itemize}
+
+\subsection{Bonus Targets}
+
+\begin{itemize}
+    \item \textbf{Blockchain audit logging (+6\%)} — Extending hash chaining into a lightweight blockchain structure for stronger tamper evidence.
+    \item \textbf{Resume parsing (+2\%)} — NLP-based extraction of skills and experience from uploaded PDFs for automated candidate--job matching.
 \end{itemize}

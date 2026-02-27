@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Icon from '../components/Icons';
 
 export default function Register() {
     const { register } = useAuth();
@@ -9,6 +10,8 @@ export default function Register() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -68,14 +71,34 @@ export default function Register() {
                     </div>
                     <div className="form-group">
                         <label htmlFor="password">Password</label>
-                        <input id="password" type="password" value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Min 12 chars, mix case + digit + symbol" required />
+                        <div className="password-input-wrapper">
+                            <input id="password" type={showPassword ? 'text' : 'password'} value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Min 8 chars, mix case + digit + symbol" required />
+                            <button
+                                type="button"
+                                className="password-toggle-btn"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                <Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
+                            </button>
+                        </div>
                     </div>
                     <div className="form-group">
                         <label htmlFor="confirm">Confirm Password</label>
-                        <input id="confirm" type="password" value={confirm}
-                            onChange={(e) => setConfirm(e.target.value)} placeholder="Repeat password" required />
+                        <div className="password-input-wrapper">
+                            <input id="confirm" type={showConfirm ? 'text' : 'password'} value={confirm}
+                                onChange={(e) => setConfirm(e.target.value)} placeholder="Repeat password" required />
+                            <button
+                                type="button"
+                                className="password-toggle-btn"
+                                onClick={() => setShowConfirm(!showConfirm)}
+                                aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                            >
+                                <Icon name={showConfirm ? 'eyeOff' : 'eye'} size={18} />
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
                         {loading ? 'Creating account…' : 'Create Account'}

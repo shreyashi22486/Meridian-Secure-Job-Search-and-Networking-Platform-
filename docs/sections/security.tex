@@ -2,102 +2,70 @@
 %  Section 6 — Security Measures
 % ═══════════════════════════════════════════════════════════════════════
 
-\section{Security Measures and Threat Mitigations}
+\section{Security Analysis}
 \label{sec:security}
 
-This section details the specific security mechanisms implemented and the threats they mitigate.
+This section takes a threat-driven look at the platform's security posture. Rather than listing features in isolation, we examine each attack vector and explain how the architecture defends against it.
 
-\subsection{Authentication Security}
+\subsection{Authentication Attacks}
 
-\begin{table}[H]
-\centering
-\begin{tabular}{p{4cm} p{4cm} p{5cm}}
-    \toprule
-    \textbf{Threat} & \textbf{Mitigation} & \textbf{Implementation} \\
-    \midrule
-    Password cracking & Argon2id (memory-hard) & 64~MB memory, 3 iterations, 4 threads \\
-    Credential stuffing & Account lockout & 5 attempts → 15 min lock \\
-    User enumeration & Timing-safe responses & Dummy hash on unknown emails \\
-    Token theft (XSS) & HttpOnly cookies & Tokens never in JS-accessible storage \\
-    Session hijacking & Device fingerprinting & IP + User-Agent hash bound to token \\
-    Token replay & Refresh rotation & New JTI on each refresh; reuse → full revocation \\
-    TOTP replay & Used-OTP table & Code + time window tracked in DB \\
-    \bottomrule
-\end{tabular}
-\caption{Authentication threat model and mitigations.}
-\end{table}
+\textbf{Password cracking.} Even if the database is compromised, passwords are protected by Argon2id with 64~MB memory cost — making GPU-based brute force prohibitively expensive. Each hash uses a unique 16-byte salt.
 
-\subsection{Web Application Security}
+\textbf{Credential stuffing.} Automated login attempts from breached credentials are throttled by account lockout (5 attempts triggers a 15-minute lock). The lockout event is logged, alerting admins to potential attacks.
 
-\subsubsection{Cross-Site Scripting (XSS)}
+\textbf{User enumeration.} Both registration and login return generic error messages. On login with an unknown email, a dummy hash is computed to make the response time indistinguishable from a valid attempt.
 
-\begin{itemize}
-    \item \textbf{Server-side:} All user text input is sanitized with \texttt{bleach.clean()} before storage. The sanitizer strips all HTML tags, JavaScript URIs, and event handlers.
-    \item \textbf{Client-side:} React's JSX automatically escapes variables, preventing DOM-based XSS.
-    \item \textbf{Headers:} \texttt{X-Content-Type-Options: nosniff} prevents MIME-type sniffing attacks.
-\end{itemize}
+\textbf{Token theft via XSS.} JWTs live in HttpOnly cookies — JavaScript cannot access them, even in a successful XSS scenario. Combined with server-side input sanitization and React's automatic escaping, XSS attack surface is minimal.
 
-\subsubsection{Cross-Site Request Forgery (CSRF)}
+\textbf{Session hijacking.} Each token is bound to a device fingerprint (hash of IP + User-Agent). A stolen token used from a different device will be rejected. Additionally, refresh token rotation means a stolen refresh token can only be used once before the entire session graph is invalidated.
 
-The platform implements the \textbf{double-submit cookie pattern}:
-\begin{enumerate}
-    \item \texttt{GET /api/auth/csrf} returns a random token in both a cookie and the response body.
-    \item The frontend reads the body value and sends it as the \texttt{X-CSRF-Token} header on state-changing requests.
-    \item The backend middleware verifies that the header value matches the cookie value.
-    \item Safe methods (GET, HEAD, OPTIONS) are exempt.
-\end{enumerate}
+\subsection{Web Application Attacks}
 
-\subsubsection{SQL Injection}
+\textbf{Cross-Site Scripting (XSS)} is mitigated at two layers. Server-side, \texttt{bleach.clean()} strips all HTML tags, event handlers, and JavaScript URIs from user input before storage. Client-side, React's JSX escaping prevents DOM injection. Security headers (\texttt{X-Content-Type-Options: nosniff}) prevent MIME-sniffing attacks.
 
-\begin{itemize}
-    \item All database queries use \textbf{SQLAlchemy ORM} with parameterized queries.
-    \item No raw SQL strings are used anywhere in the codebase.
-    \item Pydantic schemas validate and type-check all inputs before they reach the ORM layer.
-\end{itemize}
+\textbf{Cross-Site Request Forgery (CSRF)} is prevented via the double-submit cookie pattern. A random token is set as both a cookie and returned in the response body. State-changing requests must include the token in an \texttt{X-CSRF-Token} header, which must match the cookie. Since an attacker's site cannot read our cookies (same-origin policy), they cannot forge the header.
 
-\subsubsection{Session Fixation}
+\textbf{SQL Injection} is structurally prevented — all queries use SQLAlchemy's ORM with parameterized bindings. No raw SQL strings exist in the codebase. Input validation via Pydantic schemas adds a second layer of defense.
 
-\begin{itemize}
-    \item Sessions are created server-side with fresh UUIDs — the client cannot influence session IDs.
-    \item On login, new session and tokens are always created (no session reuse).
-    \item On logout, the session is revoked in the database and cookies are cleared.
-\end{itemize}
+\textbf{Session Fixation} is impossible because sessions are created server-side with fresh UUIDs. The client cannot influence session identifiers. On every login, a new session is created; on logout, the existing session is database-revoked.
 
 \subsection{Data Protection}
 
-\subsubsection{Encryption at Rest}
+Sensitive data is protected both in transit and at rest:
+
+\begin{itemize}
+    \item \textbf{Passwords} — Argon2id one-way hash (irreversible)
+    \item \textbf{Resumes} — Fernet encryption on disk (AES-128-CBC + HMAC-SHA256); decrypted only in memory during authorized downloads
+    \item \textbf{TOTP secrets} — Fernet-encrypted in the database; decrypted only during verification
+    \item \textbf{Transport} — All traffic over HTTPS with TLS
+\end{itemize}
+
+File uploads face a five-layer validation pipeline (extension, MIME, magic bytes, size, content scan for PDFs) before encryption. Files are stored with UUID names to prevent path traversal, and the storage directory sits outside the web root.
+
+\subsection{Access Control}
+
+The RBAC model is enforced at the API layer, not the UI layer — meaning even if someone bypasses the frontend, the backend rejects unauthorized requests:
 
 \begin{table}[H]
 \centering
-\begin{tabular}{p{3.5cm} p{3.5cm} p{6cm}}
+\small
+\begin{tabular}{p{3cm} p{2.5cm} p{2.5cm} p{2.5cm}}
     \toprule
-    \textbf{Data} & \textbf{Method} & \textbf{Details} \\
+    \textbf{Resource} & \textbf{User} & \textbf{Recruiter} & \textbf{Admin} \\
     \midrule
-    Passwords & Argon2id hash & One-way; never stored as plaintext \\
-    Resumes (PDF) & Fernet (AES-128-CBC) & Encrypted on upload, decrypted in-memory on download \\
-    TOTP secrets & Fernet & Encrypted before DB storage; decrypted for verification only \\
+    Own profile      & Read/Write & Read/Write & Read/Write \\
+    Own resumes      & CRUD       & CRUD       & CRUD \\
+    Others' resumes  & —          & Read       & Read \\
+    User management  & —          & —          & Full \\
+    Audit logs       & —          & —          & Read \\
     \bottomrule
 \end{tabular}
-\caption{Data encryption methods.}
+\caption{RBAC permission matrix. Enforced via FastAPI \texttt{Depends()} injection.}
 \end{table}
-
-\subsubsection{File Upload Security}
-
-Resume and avatar uploads are protected by a multi-layer validation pipeline:
-
-\begin{enumerate}
-    \item \textbf{Extension whitelist:} Only \texttt{.pdf} for resumes; \texttt{.jpg}, \texttt{.jpeg}, \texttt{.png} for avatars.
-    \item \textbf{MIME type check:} Content-Type header must match allowed types.
-    \item \textbf{Magic byte validation:} File header bytes must match expected signatures (prevents extension spoofing).
-    \item \textbf{Size limits:} 2~MB for both resumes and avatars.
-    \item \textbf{Content scan (PDF):} Checks for embedded JavaScript, launch actions, and auto-open actions.
-    \item \textbf{UUID filenames:} Original filenames are stored only in the database; files on disk use random UUIDs (prevents path traversal).
-    \item \textbf{Storage isolation:} Files are stored outside the web root; access requires authentication and authorization.
-\end{enumerate}
 
 \subsection{Security Headers}
 
-The following HTTP security headers are set on all responses:
+Every response includes hardened headers that defend against common browser-based attacks:
 
 \begin{lstlisting}
 X-Content-Type-Options: nosniff
@@ -106,23 +74,3 @@ X-XSS-Protection: 1; mode=block
 Referrer-Policy: strict-origin-when-cross-origin
 Strict-Transport-Security: max-age=31536000; includeSubDomains
 \end{lstlisting}
-
-\subsection{Access Control Model}
-
-\begin{table}[H]
-\centering
-\begin{tabular}{p{3cm} p{2.5cm} p{2.5cm} p{2.5cm}}
-    \toprule
-    \textbf{Resource} & \textbf{User} & \textbf{Recruiter} & \textbf{Admin} \\
-    \midrule
-    Own profile & Read/Write & Read/Write & Read/Write \\
-    Others' profiles & — & Read & Read \\
-    Own resumes & CRUD & CRUD & CRUD \\
-    Others' resumes & — & Read & Read \\
-    Job postings & Read & CRUD & CRUD \\
-    User management & — & — & Full \\
-    Audit logs & — & — & Read \\
-    \bottomrule
-\end{tabular}
-\caption{RBAC permission matrix.}
-\end{table}

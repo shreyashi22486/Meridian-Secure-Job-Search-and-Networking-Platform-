@@ -8,6 +8,7 @@ export default function Login() {
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [otpCode, setOtpCode] = useState('');
     const [tempToken, setTempToken] = useState(null);
     const [error, setError] = useState('');
@@ -115,14 +116,24 @@ export default function Login() {
                     </div>
                     <div className="form-group">
                         <label htmlFor="password">Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            required
-                        />
+                        <div className="password-input-wrapper">
+                            <input
+                                id="password"
+                                type={showPassword ? 'text' : 'password'}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                                required
+                            />
+                            <button
+                                type="button"
+                                className="password-toggle-btn"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                <Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
                         {loading ? 'Signing in…' : 'Sign In'}

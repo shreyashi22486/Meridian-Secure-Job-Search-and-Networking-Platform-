@@ -5,143 +5,104 @@
 \section{Software Requirements Specification}
 \label{sec:requirements}
 
-This section describes the functional and security requirements for the Meridian platform, organized by feature area. Requirements are mapped to their implementation milestone.
-
-\subsection{User Profiles and Connections}
-
-\begin{table}[H]
-\centering
-\begin{tabular}{p{1.2cm} p{8.5cm} p{3cm}}
-    \toprule
-    \textbf{ID} & \textbf{Requirement} & \textbf{Milestone} \\
-    \midrule
-    R-UP-1 & Users can create and edit profiles (name, headline, location, education, experience, skills, bio) & M2 (\checkmark) \\
-    R-UP-2 & Profile picture upload with JPEG/PNG validation and magic-byte checks & M2 (\checkmark) \\
-    R-UP-3 & Field-level privacy controls (public/connections-only/private) & M3 \\
-    R-UP-4 & Connection requests (send, accept, remove) & M3 \\
-    R-UP-5 & Profile viewer count with opt-out & M4 \\
-    \bottomrule
-\end{tabular}
-\caption{User profile requirements and implementation timeline.}
-\end{table}
-
-\subsection{Company Pages and Job Posting}
-
-\begin{table}[H]
-\centering
-\begin{tabular}{p{1.2cm} p{8.5cm} p{3cm}}
-    \toprule
-    \textbf{ID} & \textbf{Requirement} & \textbf{Milestone} \\
-    \midrule
-    R-JP-1 & Recruiters can create company pages (name, description, location, website) & M3 \\
-    R-JP-2 & Job postings with title, description, skills, location, salary, deadline & M3 \\
-    R-JP-3 & Company admins can manage listings and view applicants & M3 \\
-    \bottomrule
-\end{tabular}
-\caption{Company and job posting requirements.}
-\end{table}
-
-\subsection{Job Search and Application Tracking}
-
-\begin{table}[H]
-\centering
-\begin{tabular}{p{1.2cm} p{8.5cm} p{3cm}}
-    \toprule
-    \textbf{ID} & \textbf{Requirement} & \textbf{Milestone} \\
-    \midrule
-    R-JA-1 & Job search by keywords, company, location, skill tags, filters & M3 \\
-    R-JA-2 & Apply to jobs with resume submission and cover note & M3 \\
-    R-JA-3 & Application status tracking (Applied, Reviewed, Interviewed, Rejected, Offer) & M3 \\
-    R-JA-4 & Recruiter candidate shortlisting and notes & M3 \\
-    \bottomrule
-\end{tabular}
-\caption{Job search and application tracking requirements.}
-\end{table}
-
-\subsection{Secure Resume Upload and Storage}
-
-\begin{table}[H]
-\centering
-\begin{tabular}{p{1.2cm} p{8.5cm} p{3cm}}
-    \toprule
-    \textbf{ID} & \textbf{Requirement} & \textbf{Milestone} \\
-    \midrule
-    R-SR-1 & Resume upload in PDF format with multi-layer validation & M2 (\checkmark) \\
-    R-SR-2 & All resumes encrypted at rest using Fernet symmetric encryption & M2 (\checkmark) \\
-    R-SR-3 & Access control: only owner, authorized recruiters, and admins & M2 (\checkmark) \\
-    R-SR-4 & UUID-based filenames prevent path traversal attacks & M2 (\checkmark) \\
-    \bottomrule
-\end{tabular}
-\caption{Resume security requirements.}
-\end{table}
+This section maps the course-specified requirements to our implementation plan. Each requirement is tagged with its target milestone and current status, making it easy to track progress across the semester.
 
 \subsection{Authentication and Account Security}
 
-\begin{table}[H]
-\centering
-\begin{tabular}{p{1.2cm} p{8.5cm} p{3cm}}
-    \toprule
-    \textbf{ID} & \textbf{Requirement} & \textbf{Milestone} \\
-    \midrule
-    R-AS-1 & Secure registration with password strength validation & M2 (\checkmark) \\
-    R-AS-2 & Login with Argon2id password verification & M2 (\checkmark) \\
-    R-AS-3 & TOTP-based two-factor authentication (replaces email OTP per instructor) & M2 (\checkmark) \\
-    R-AS-4 & JWT tokens stored in HttpOnly, Secure, SameSite cookies & M2 (\checkmark) \\
-    R-AS-5 & Device fingerprinting and session binding & M2 (\checkmark) \\
-    R-AS-6 & Account lockout after 5 failed login attempts & M2 (\checkmark) \\
-    R-AS-7 & Refresh token rotation with reuse detection & M2 (\checkmark) \\
-    \bottomrule
-\end{tabular}
-\caption{Authentication and security requirements.}
-\end{table}
-
-\subsection{Admin and Moderation}
+The platform must provide robust identity management. Users register with email and password, where passwords must meet strength requirements and are stored using a memory-hard hashing algorithm (never in plaintext). Login must support TOTP-based two-factor authentication, with session management via secure, HttpOnly cookies. Account lockout must trigger after repeated failed attempts.
 
 \begin{table}[H]
 \centering
-\begin{tabular}{p{1.2cm} p{8.5cm} p{3cm}}
+\small
+\begin{tabular}{p{1cm} p{9cm} p{2.5cm}}
     \toprule
-    \textbf{ID} & \textbf{Requirement} & \textbf{Milestone} \\
+    \textbf{ID} & \textbf{Requirement} & \textbf{Status} \\
     \midrule
-    R-AD-1 & Admin dashboard with user management (list, search) & M2 (\checkmark) \\
-    R-AD-2 & Role-based access control (User, Recruiter, Admin) & M2 (\checkmark) \\
-    R-AD-3 & Suspend or unsuspend user accounts & M2 (\checkmark) \\
-    R-AD-4 & Delete user accounts with cascade cleanup & M2 (\checkmark) \\
-    R-AD-5 & Audit log viewing with filters & M2 (\checkmark) \\
+    AS-1 & Secure registration with password strength validation & M2 \checkmark \\
+    AS-2 & Argon2id password hashing (64 MB, 3 iter) & M2 \checkmark \\
+    AS-3 & TOTP two-factor authentication & M2 \checkmark \\
+    AS-4 & JWT in HttpOnly, Secure, SameSite cookies & M2 \checkmark \\
+    AS-5 & Device fingerprinting and session binding & M2 \checkmark \\
+    AS-6 & Account lockout after 5 failed attempts & M2 \checkmark \\
+    AS-7 & Refresh token rotation with reuse detection & M2 \checkmark \\
     \bottomrule
 \end{tabular}
-\caption{Admin dashboard requirements.}
 \end{table}
 
-\subsection{Security Mandates}
+\subsection{User Profiles}
+
+Users need to build a professional presence on the platform. This includes managing personal information, education history, work experience, and skills — all with input sanitization to prevent XSS attacks. Profile pictures undergo multi-layer validation (extension, MIME, magic bytes) before storage.
 
 \begin{table}[H]
 \centering
-\begin{tabular}{p{1.2cm} p{8.5cm} p{3cm}}
+\small
+\begin{tabular}{p{1cm} p{9cm} p{2.5cm}}
     \toprule
-    \textbf{ID} & \textbf{Requirement} & \textbf{Milestone} \\
+    \textbf{ID} & \textbf{Requirement} & \textbf{Status} \\
     \midrule
-    R-SM-1 & HTTPS/TLS for all traffic & M1 (\checkmark) \\
-    R-SM-2 & PKI for at least two security functions & M4 \\
-    R-SM-3 & CSRF double-submit cookie protection & M2 (\checkmark) \\
-    R-SM-4 & XSS prevention via input sanitization & M2 (\checkmark) \\
-    R-SM-5 & SQL injection protection via ORM parameterized queries & M2 (\checkmark) \\
-    R-SM-6 & Tamper-evident audit logs (hash chaining) & M4 \\
-    R-SM-7 & Passwords hashed with Argon2id (never stored in plaintext) & M2 (\checkmark) \\
-    R-SM-8 & Session fixation and hijacking prevention & M2 (\checkmark) \\
+    UP-1 & Create/edit profiles (name, headline, bio, location) & M2 \checkmark \\
+    UP-2 & Avatar upload with magic-byte validation & M2 \checkmark \\
+    UP-3 & Education and experience management (CRUD) & M2 \checkmark \\
+    UP-4 & Skills with autocomplete from curated list & M2 \checkmark \\
+    UP-5 & Connection requests and privacy controls & M3 \\
     \bottomrule
 \end{tabular}
-\caption{Security mandate requirements and implementation status.}
 \end{table}
+
+\subsection{Secure Resume Storage}
+
+Resumes are the most sensitive user asset on the platform. They must be encrypted at rest — meaning the server never stores plaintext resume content on disk. Downloads decrypt in memory and stream directly to the client. Access is restricted to the owner, authorized recruiters, and admins.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{1cm} p{9cm} p{2.5cm}}
+    \toprule
+    \textbf{ID} & \textbf{Requirement} & \textbf{Status} \\
+    \midrule
+    SR-1 & PDF upload with multi-layer validation & M2 \checkmark \\
+    SR-2 & Fernet encryption at rest (AES-128-CBC + HMAC) & M2 \checkmark \\
+    SR-3 & Owner/recruiter/admin-only access control & M2 \checkmark \\
+    SR-4 & UUID filenames to prevent path traversal & M2 \checkmark \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Admin Dashboard}
+
+Platform admins require visibility into user activity and the ability to moderate accounts. The dashboard must support user management (listing, role changes, suspension, deletion) and access to audit logs that record every security-relevant event.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{1cm} p{9cm} p{2.5cm}}
+    \toprule
+    \textbf{ID} & \textbf{Requirement} & \textbf{Status} \\
+    \midrule
+    AD-1 & Admin dashboard with user list and search & M2 \checkmark \\
+    AD-2 & RBAC: User, Recruiter, Admin roles & M2 \checkmark \\
+    AD-3 & Suspend/unsuspend accounts & M2 \checkmark \\
+    AD-4 & Delete accounts with cascade cleanup & M2 \checkmark \\
+    AD-5 & Audit log viewer with filters & M2 \checkmark \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Upcoming Requirements (Milestones 3--4)}
+
+The following requirements are planned for future milestones:
+
+\begin{itemize}
+    \item \textbf{M3:} Company pages, job postings, search with filters, application tracking, encrypted messaging
+    \item \textbf{M4:} PKI integration (message signing, resume integrity), OTP virtual keyboard for high-risk actions, tamper-evident audit logs (hash chaining), defense demonstrations against SQL injection, XSS, CSRF, and session attacks
+\end{itemize}
 
 \subsection{User Roles}
 
-The platform defines three user roles with escalating privileges:
+The platform defines three roles with escalating privileges. Access control is enforced at the API layer via FastAPI's dependency injection — every protected endpoint passes through a role checker before any business logic executes.
 
-\begin{enumerate}[label=\textbf{\arabic*.}]
-    \item \textbf{Regular User (Job Seeker)} — Can manage profile, upload resumes, apply to jobs, send/receive messages.
-    \item \textbf{Recruiter / Company Admin} — All user capabilities plus creating company pages, posting jobs, viewing applicants, and messaging candidates.
-    \item \textbf{Platform Admin} — Full access to user management, content moderation, and audit logs.
+\begin{enumerate}
+    \item \textbf{Regular User} — manages own profile, uploads resumes, applies to jobs
+    \item \textbf{Recruiter / Company Admin} — additionally creates company pages, posts jobs, views applicants
+    \item \textbf{Platform Admin} — full access to user management, moderation, and audit logs
 \end{enumerate}
-
-Access control is enforced at the API layer via dependency injection (FastAPI \texttt{Depends()}) — no endpoint can be accessed without passing through the role checker.
