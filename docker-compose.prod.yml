@@ -50,6 +50,9 @@ services:
     image: ghcr.io/angadjeet/secure-job-portal/frontend:latest
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - /opt/meridian/ssl:/etc/nginx/ssl:ro
     depends_on:
       - backend
     restart: unless-stopped
