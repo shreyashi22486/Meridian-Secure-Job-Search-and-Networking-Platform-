@@ -12,6 +12,10 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends libmagic1 && \
     rm -rf /var/lib/apt/lists/*
 
+# Create a non-root user and group
+RUN groupadd -g 10001 appgroup && \
+    useradd -u 10001 -g appgroup -s /bin/bash -m appuser
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -20,8 +24,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY app/ app/
 
-# Create upload directory
-RUN mkdir -p data/resumes
+# Create data directories and set permissions for the non-root user
+RUN mkdir -p data/resumes data/avatars && \
+    chown -R appuser:appgroup /app
+
+# Switch to the non-root user
+USER 10001
 
 EXPOSE 8000
 
