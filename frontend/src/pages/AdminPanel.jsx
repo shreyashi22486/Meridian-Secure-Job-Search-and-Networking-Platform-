@@ -136,11 +136,23 @@ export default function AdminPanel() {
                         <tbody>
                             {logs.map((log) => (
                                 <tr key={log.id}>
-                                    <td className="mono">{new Date(log.created_at).toLocaleString()}</td>
+                                    <td className="mono">
+                                        {new Date(log.created_at).toLocaleString('en-IN', {
+                                            timeZone: 'Asia/Kolkata',
+                                            dateStyle: 'short',
+                                            timeStyle: 'medium'
+                                        })}
+                                    </td>
                                     <td><span className="badge badge-action">{log.action}</span></td>
                                     <td className="mono">{log.user_id ? log.user_id.slice(0, 8) + '...' : '—'}</td>
                                     <td className="mono">{log.ip_address || '—'}</td>
-                                    <td className="mono">{log.details ? JSON.stringify(log.details).slice(0, 60) : '—'}</td>
+                                    <td className="details-cell">
+                                        {log.details ? (
+                                            <pre className="details-json">
+                                                {JSON.stringify(log.details, null, 2)}
+                                            </pre>
+                                        ) : '—'}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

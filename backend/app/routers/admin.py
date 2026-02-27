@@ -253,7 +253,7 @@ async def get_audit_logs(
                 "action": log.action,
                 "ip_address": log.ip_address,
                 "details": log.details,
-                "created_at": log.created_at.isoformat(),
+                "created_at": log.created_at.isoformat() + "Z",
             }
             for log in logs
         ],

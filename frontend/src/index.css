@@ -667,6 +667,23 @@ textarea {
   cursor: pointer;
 }
 
+.details-cell {
+  max-width: 300px;
+}
+
+.details-json {
+  background: var(--bg-alt);
+  padding: 0.5rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.75rem;
+  overflow-x: auto;
+  margin: 0;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
 /* ─── Upload Area ────────────────────────────────────────────── */
 .upload-area {
   text-align: center;
