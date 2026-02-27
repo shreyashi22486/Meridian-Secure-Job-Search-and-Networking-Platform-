@@ -1,1 +1,13 @@
-main.aux\nmain.log\nmain.out\nmain.toc\n*.aux\n*.log\n*.out\n*.toc\n*.synctex.gz
+# LaTeX build artifacts — keep out of git
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+*.nav
+*.snm
+*.vrb

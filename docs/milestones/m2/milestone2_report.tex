@@ -1,0 +1,203 @@
+% ═══════════════════════════════════════════════════════════════════════
+%  Meridian — Milestone 2 Standalone Report
+%  CSE 345/545 Foundations of Computer Security
+%  Compile: pdflatex milestone2_report.tex (run twice for TOC)
+% ═══════════════════════════════════════════════════════════════════════
+\documentclass[12pt, a4paper]{article}
+
+% ─── Packages ─────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tikz}
+
+% ─── Colors ───────────────────────────────────────────────────────────
+\definecolor{meridianblue}{HTML}{4F46E5}
+\definecolor{meridiandark}{HTML}{1E1B4B}
+\definecolor{codebg}{HTML}{F8F9FA}
+\definecolor{codeframe}{HTML}{D1D5DB}
+
+% ─── Hyperref ─────────────────────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=meridianblue,
+    urlcolor=meridianblue,
+    pdfauthor={Team Meridian},
+    pdftitle={Meridian — Milestone 2 Report},
+    pdfsubject={CSE 345/545 Course Project — Milestone 2},
+}
+
+% ─── Code listings ───────────────────────────────────────────────────
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{codeframe},
+    breaklines=true,
+    captionpos=b,
+    tabsize=2,
+    showstringspaces=false,
+    keywordstyle=\color{meridianblue}\bfseries,
+    commentstyle=\color{gray},
+    stringstyle=\color{red!70!black},
+}
+
+% ─── Headers & footers ──────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{gray}{CSE 345/545 — Milestone 2}}
+\fancyhead[R]{\small\textcolor{gray}{Meridian}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ─── Section styling ────────────────────────────────────────────────
+\titleformat{\section}
+    {\Large\bfseries\color{meridiandark}}
+    {\thesection}{1em}{}
+\titleformat{\subsection}
+    {\large\bfseries\color{meridiandark}}
+    {\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+    {\normalsize\bfseries\color{meridiandark}}
+    {\thesubsubsection}{1em}{}
+
+\graphicspath{{../../report/figures/}}
+
+% ═══════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ─── Title Page ──────────────────────────────────────────────────────
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\Huge\bfseries\textcolor{meridiandark}{Meridian}\par}
+    \vspace{0.5cm}
+    {\Large\textcolor{meridianblue}{Secure Job Search \& Professional\\Networking Platform}\par}
+
+    \vspace{1.5cm}
+
+    {\LARGE\textbf{Milestone 2 Report}\par}
+    \vspace{0.3cm}
+    {\large Authentication, 2FA, Profiles, Resume Encryption, Admin\par}
+
+    \vspace{1.5cm}
+
+    {\large\textbf{CSE 345/545 — Foundations of Computer Security}\par}
+
+    \vspace{1.5cm}
+
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Team Members} & \textbf{Roll Number} \\
+        \midrule
+        Aniket Gupta    & 2022073 \\
+        Angadjeet Singh & 2022071 \\
+        Harsh Kumar     & 2022198 \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{2cm}
+
+    {\large IIIT Delhi\par}
+    {\large February 27, 2026\par}
+\end{titlepage}
+
+% ─── Table of Contents ──────────────────────────────────────────────
+\newpage
+\tableofcontents
+\newpage
+
+% ═══════════════════════════════════════════════════════════════════════
+%  1. Overview — What this milestone covers
+% ═══════════════════════════════════════════════════════════════════════
+\section{Overview}
+
+This report covers Milestone~2 of the Meridian platform, due February~27, 2026 (weight: 2.5\%). The milestone required five deliverables:
+
+\begin{enumerate}
+    \item Secure user registration and login
+    \item TOTP-based two-factor authentication (replacing email OTP per instructor guidance)
+    \item User profile management
+    \item Secure resume upload with encryption at rest
+    \item Basic admin dashboard
+\end{enumerate}
+
+All five goals are fully implemented and tested. This report details each goal's design, implementation, and security rationale, followed by a summary of the security measures protecting the platform.
+
+\subsection{Technology Stack}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{3cm} p{4cm} p{6cm}}
+    \toprule
+    \textbf{Layer} & \textbf{Technology} & \textbf{Rationale} \\
+    \midrule
+    Backend & Python / FastAPI & Async, auto-docs, Pydantic validation, dependency injection \\
+    Frontend & React 18 / Vite & Component reuse, JSX auto-escaping (XSS defense) \\
+    Database & PostgreSQL 16 & UUID support, JSONB for audit details, ACID compliance \\
+    Deployment & Docker + GitHub Actions & Reproducible builds, automated CI/CD \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Architecture}
+
+\begin{center}
+\begin{tikzpicture}[
+    box/.style={draw, rounded corners, minimum width=3.5cm, minimum height=1cm, align=center, fill=#1!10, draw=#1!50!black},
+    arrow/.style={->, thick, >=stealth}
+]
+    \node[box=blue] (client) at (0, 6) {\textbf{React Frontend}\\Vite Dev / Nginx};
+    \node[box=green] (api) at (0, 3.5) {\textbf{FastAPI Backend}\\Uvicorn ASGI};
+    \node[box=orange] (db) at (-3, 1) {\textbf{PostgreSQL}\\Users, Sessions,\\Audit Logs};
+    \node[box=red] (fs) at (3, 1) {\textbf{Encrypted FS}\\Resumes (.enc)\\Avatars};
+    \draw[arrow] (client) -- node[right, font=\small] {HTTPS / JSON} (api);
+    \draw[arrow] (api) -- node[left, font=\small] {SQLAlchemy ORM} (db);
+    \draw[arrow] (api) -- node[right, font=\small] {Fernet I/O} (fs);
+\end{tikzpicture}
+\end{center}
+
+% ═══════════════════════════════════════════════════════════════════════
+%  2–6. The five goals — reuse the shared milestone2.tex content
+% ═══════════════════════════════════════════════════════════════════════
+\input{../../report/sections/milestone2}
+
+% ═══════════════════════════════════════════════════════════════════════
+%  Security Summary
+% ═══════════════════════════════════════════════════════════════════════
+\newpage
+\input{../../report/sections/security}
+
+% ═══════════════════════════════════════════════════════════════════════
+%  What's Next
+% ═══════════════════════════════════════════════════════════════════════
+\newpage
+\section{What's Next — Milestone 3}
+
+With the authentication and data protection foundation in place, Milestone~3 (March~31) will add:
+
+\begin{itemize}
+    \item Company pages and job postings (recruiter workflow)
+    \item Job search with filters (keywords, location, remote, skills)
+    \item Application tracking (Applied $\rightarrow$ Reviewed $\rightarrow$ Interviewed $\rightarrow$ Offer/Rejected)
+    \item End-to-end encrypted 1:1 messaging between recruiters and candidates
+    \item Expanded audit logging for all new features
+\end{itemize}
+
+\end{document}

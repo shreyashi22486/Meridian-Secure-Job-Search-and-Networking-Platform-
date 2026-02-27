@@ -43,23 +43,33 @@ Secure-Job-Portal/
 │   │   ├── routers/          # API endpoints (auth, users, resumes, admin, profile)
 │   │   ├── models/           # SQLAlchemy ORM models
 │   │   ├── schemas/          # Pydantic schemas with sanitization
-│   │   ├── security/         # Crypto primitives (password, JWT, TOTP, encryption, CSRF)
+│   │   ├── security/         # Crypto (password, JWT, TOTP, encryption, CSRF)
 │   │   ├── dependencies.py   # Auth & RBAC dependency injection
 │   │   └── config.py         # Environment-based configuration
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/            # Login, Register, Dashboard, Profile, Resumes, AdminPanel
+│   │   ├── pages/            # Login, Register, Dashboard, Profile, Resumes, Admin
 │   │   ├── components/       # Navbar, Icons, Toast, ConfirmDialog
 │   │   └── context/          # AuthContext, ThemeContext, ToastProvider
 │   ├── Dockerfile
 │   └── nginx.conf
-├── docs/                     # LaTeX documentation
-│   ├── main.tex              # Master document
-│   └── sections/             # Modular sections (intro, requirements, architecture, etc.)
+├── docs/
+│   ├── report/               # Full project report
+│   │   ├── main.tex          # Master document (compiles to full report)
+│   │   ├── main.pdf          # Compiled PDF
+│   │   ├── sections/         # Modular sections (.tex files)
+│   │   └── figures/          # Screenshots and diagrams
+│   └── milestones/           # Standalone per-milestone reports
+│       ├── m1/
+│       │   ├── milestone1_report.tex
+│       │   └── milestone1_report.pdf
+│       └── m2/
+│           ├── milestone2_report.tex
+│           └── milestone2_report.pdf
 ├── tests/
-│   └── integration_test.sh   # Comprehensive API test suite
+│   └── integration_test.sh   # API test suite (30+ tests)
 ├── .github/workflows/        # CI/CD (lint, test, build, deploy)
 ├── docker-compose.yml
 └── .env.example
@@ -101,12 +111,16 @@ docker compose up --build
 
 ## Documentation
 
-Full project documentation (SRS, architecture, milestone reports, security analysis) is available in the `docs/` directory as a LaTeX project. To compile:
+The `docs/` directory contains two types of LaTeX reports:
 
+- **`docs/report/`** — Full project report (all milestones, architecture, security analysis)
+- **`docs/milestones/m2/`** — Standalone Milestone 2 submission report
+
+To compile either:
 ```bash
-cd docs
-pdflatex main.tex
-pdflatex main.tex  # Run twice for TOC
+cd docs/report          # or docs/milestones/m2
+pdflatex main.tex       # or milestone2_report.tex
+pdflatex main.tex       # Run twice for TOC
 ```
 
 ## Team

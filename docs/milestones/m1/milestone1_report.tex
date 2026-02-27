@@ -1,0 +1,285 @@
+% ═══════════════════════════════════════════════════════════════════════
+%  Meridian — Milestone 1 Standalone Report
+%  CSE 345/545 Foundations of Computer Security
+%  Compile: pdflatex milestone1_report.tex (run twice for TOC)
+% ═══════════════════════════════════════════════════════════════════════
+\documentclass[12pt, a4paper]{article}
+
+% ─── Packages ─────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tikz}
+
+% ─── Colors ───────────────────────────────────────────────────────────
+\definecolor{meridianblue}{HTML}{4F46E5}
+\definecolor{meridiandark}{HTML}{1E1B4B}
+\definecolor{codebg}{HTML}{F8F9FA}
+\definecolor{codeframe}{HTML}{D1D5DB}
+
+% ─── Hyperref ─────────────────────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=meridianblue,
+    urlcolor=meridianblue,
+    pdfauthor={Team Meridian},
+    pdftitle={Meridian — Milestone 1 Report},
+    pdfsubject={CSE 345/545 Course Project — Milestone 1},
+}
+
+% ─── Code listings ───────────────────────────────────────────────────
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{codeframe},
+    breaklines=true,
+    captionpos=b,
+    tabsize=2,
+    showstringspaces=false,
+    keywordstyle=\color{meridianblue}\bfseries,
+    commentstyle=\color{gray},
+    stringstyle=\color{red!70!black},
+}
+
+% ─── Headers & footers ──────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{gray}{CSE 345/545 — Milestone 1}}
+\fancyhead[R]{\small\textcolor{gray}{Meridian}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ─── Section styling ────────────────────────────────────────────────
+\titleformat{\section}
+    {\Large\bfseries\color{meridiandark}}
+    {\thesection}{1em}{}
+\titleformat{\subsection}
+    {\large\bfseries\color{meridiandark}}
+    {\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+    {\normalsize\bfseries\color{meridiandark}}
+    {\thesubsubsection}{1em}{}
+
+% ═══════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ─── Title Page ──────────────────────────────────────────────────────
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\Huge\bfseries\textcolor{meridiandark}{Meridian}\par}
+    \vspace{0.5cm}
+    {\Large\textcolor{meridianblue}{Secure Job Search \& Professional\\Networking Platform}\par}
+
+    \vspace{1.5cm}
+
+    {\LARGE\textbf{Milestone 1 Report}\par}
+    \vspace{0.3cm}
+    {\large Tech Stack Finalization, HTTPS Setup, Skeleton Deployment\par}
+
+    \vspace{1.5cm}
+
+    {\large\textbf{CSE 345/545 — Foundations of Computer Security}\par}
+
+    \vspace{1.5cm}
+
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Team Members} & \textbf{Roll Number} \\
+        \midrule
+        Aniket Gupta    & 2022073 \\
+        Angadjeet Singh & 2022071 \\
+        Harsh Kumar     & 2022198 \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{2cm}
+
+    {\large IIIT Delhi\par}
+    {\large February 13, 2026\par}
+\end{titlepage}
+
+% ─── Table of Contents ──────────────────────────────────────────────
+\newpage
+\tableofcontents
+\newpage
+
+% ═══════════════════════════════════════════════════════════════════════
+\section{Overview}
+
+This report covers Milestone~1 of the Meridian platform, due February~13, 2026 (no credit). The milestone required three deliverables:
+
+\begin{enumerate}
+    \item Finalize the technology stack
+    \item Configure HTTPS with TLS certificates
+    \item Deploy a skeleton application on the VM
+\end{enumerate}
+
+All three goals are complete. This report documents the decisions made and the rationale behind each choice.
+
+% ═══════════════════════════════════════════════════════════════════════
+\section{Technology Stack}
+
+Each technology was selected based on its security properties and development ergonomics.
+
+\subsection{Backend — Python / FastAPI}
+
+We chose FastAPI over Django and Express for three reasons:
+
+\begin{itemize}
+    \item \textbf{Dependency injection} — FastAPI's \texttt{Depends()} system cleanly separates authentication and RBAC from route logic. Every protected endpoint declares its security requirements as function parameters, making access control auditable at a glance.
+    \item \textbf{Pydantic schemas} — All incoming data passes through typed schemas with validators. Malformed input is rejected before reaching business logic or the database.
+    \item \textbf{Async-native} — Built on ASGI (Uvicorn), enabling non-blocking I/O for concurrent request handling without thread-safety concerns.
+\end{itemize}
+
+\subsection{Frontend — React 18 / Vite}
+
+React was chosen for its component model and built-in XSS protection — all JSX expressions are automatically escaped. Vite provides fast hot module replacement during development and optimized production builds.
+
+\subsection{Database — PostgreSQL 16}
+
+PostgreSQL offers features critical to our security requirements:
+
+\begin{itemize}
+    \item \textbf{Native UUID columns} — Used as primary keys to prevent ID enumeration attacks
+    \item \textbf{JSONB} — Flexible storage for audit log details without schema changes per event type
+    \item \textbf{ACID compliance} — Transaction integrity for sensitive operations like account creation and session management
+    \item \textbf{Parameterized queries} — Via SQLAlchemy ORM, structurally preventing SQL injection
+\end{itemize}
+
+\subsection{Summary}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{p{3cm} p{4cm} p{6cm}}
+    \toprule
+    \textbf{Layer} & \textbf{Technology} & \textbf{Security Rationale} \\
+    \midrule
+    Backend & Python 3.11 / FastAPI & DI-based auth, Pydantic validation \\
+    Frontend & React 18 / Vite & JSX auto-escaping (XSS defense) \\
+    Database & PostgreSQL 16 & UUID PKs, JSONB, parameterized queries \\
+    Web Server & Nginx & TLS termination, reverse proxy, headers \\
+    Deployment & Docker + Compose & Reproducible, isolated environments \\
+    CI/CD & GitHub Actions & Automated lint, test, build \\
+    \bottomrule
+\end{tabular}
+\caption{Technology stack with security rationale.}
+\end{table}
+
+% ═══════════════════════════════════════════════════════════════════════
+\section{HTTPS Configuration}
+
+All traffic is served over HTTPS with the following setup:
+
+\subsection{Certificate Setup}
+
+For the development environment on the course VM, we generated self-signed certificates using OpenSSL:
+
+\begin{lstlisting}[language=bash]
+openssl req -x509 -nodes -days 365 \
+    -newkey rsa:2048 \
+    -keyout ssl/private.key \
+    -out ssl/certificate.crt \
+    -subj "/CN=meridian.local"
+\end{lstlisting}
+
+\subsection{Nginx TLS Configuration}
+
+Nginx is configured as a reverse proxy with TLS termination:
+
+\begin{itemize}
+    \item Listens on port 443 (HTTPS) with the self-signed certificate
+    \item Port 80 (HTTP) redirects all traffic to HTTPS
+    \item \texttt{Strict-Transport-Security} header enabled with 1-year max-age
+    \item Proxies \texttt{/api/*} to the FastAPI backend (port 8000)
+    \item Serves the React frontend build as static files
+\end{itemize}
+
+\subsection{Security Headers}
+
+Even at this early stage, we configured security headers on all responses:
+
+\begin{lstlisting}
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Referrer-Policy: strict-origin-when-cross-origin
+\end{lstlisting}
+
+% ═══════════════════════════════════════════════════════════════════════
+\section{Skeleton Application}
+
+The skeleton deployment proves that all components work together end-to-end.
+
+\subsection{What Was Deployed}
+
+\begin{itemize}
+    \item \textbf{FastAPI backend} with health check endpoint (\texttt{GET /api/health})
+    \item \textbf{React frontend} with landing page, routing, and navigation shell
+    \item \textbf{PostgreSQL database} with initial schema (users table)
+    \item \textbf{Docker Compose} orchestrating all three services
+    \item \textbf{Environment config} via \texttt{.env.example} documenting all required variables
+\end{itemize}
+
+\subsection{Project Structure}
+
+\begin{lstlisting}
+Secure-Job-Portal/
+  backend/
+    app/
+      main.py           # FastAPI app with middleware
+      config.py          # Environment-based settings
+      database.py        # SQLAlchemy engine + session
+    Dockerfile
+    requirements.txt
+  frontend/
+    src/
+      pages/            # React page components
+      components/       # Reusable UI components
+      context/          # Auth and theme context
+    Dockerfile
+    nginx.conf
+  docker-compose.yml
+  .env.example
+\end{lstlisting}
+
+\subsection{Verification}
+
+The skeleton was verified by:
+\begin{enumerate}
+    \item Accessing the frontend via HTTPS (self-signed cert warning expected)
+    \item Hitting the \texttt{/api/health} endpoint and confirming a 200 response
+    \item Confirming PostgreSQL connectivity via Docker Compose logs
+    \item Verifying all security headers are present on responses
+\end{enumerate}
+
+% ═══════════════════════════════════════════════════════════════════════
+\section{What's Next — Milestone 2}
+
+Milestone~2 (February~27, 2.5\%) will build on this foundation with:
+
+\begin{itemize}
+    \item Secure user registration and login (Argon2id, JWT, account lockout)
+    \item TOTP-based two-factor authentication
+    \item User profile management with input sanitization
+    \item Secure resume upload with Fernet encryption at rest
+    \item Basic admin dashboard with RBAC and audit logging
+\end{itemize}
+
+\end{document}
