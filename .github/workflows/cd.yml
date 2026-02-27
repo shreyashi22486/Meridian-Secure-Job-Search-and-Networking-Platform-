@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────
-# Meridian CD — Build & push Docker images on merge to main
+# Meridian CD — Build, Push & Deploy
 # ─────────────────────────────────────────────────────────────────────────
 name: CD
 
@@ -95,3 +95,31 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  # ── Deploy to Production Server ──────────────────────────────────────
+  deploy:
+    name: Deploy to Server
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/meridian
+
+            # Login to GHCR to pull private images
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ secrets.GHCR_USER }} --password-stdin
+
+            # Pull latest images and restart
+            docker compose pull
+            docker compose up -d --remove-orphans
+
+            # Clean up old images
+            docker image prune -f
+
+            echo "✅ Deployed $(date)"
