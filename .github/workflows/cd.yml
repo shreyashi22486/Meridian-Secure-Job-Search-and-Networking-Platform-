@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────
-# Nexora CD — Build & push Docker images on merge to main
+# Meridian CD — Build & push Docker images on merge to main
 # ─────────────────────────────────────────────────────────────────────────
 name: CD
 

@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────
-# Nexora CI — Runs on every push / PR to main
+# Meridian CI — Runs on every push / PR to main
 # ─────────────────────────────────────────────────────────────────────────
 name: CI
 
@@ -41,7 +41,7 @@ jobs:
       UPLOAD_DIR: ./data/resumes
       MAX_UPLOAD_SIZE: 2097152
       CORS_ORIGINS: http://localhost:5173
-      APP_NAME: Nexora
+      APP_NAME: Meridian
       DEBUG: "false"
 
     steps:
