@@ -6,7 +6,6 @@ All string inputs are sanitized against XSS via field_validators.
 from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
-import uuid
 from app.security.sanitizer import sanitize_string
 
 

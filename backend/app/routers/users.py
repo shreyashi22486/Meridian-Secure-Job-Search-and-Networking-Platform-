@@ -174,7 +174,7 @@ async def change_password(
             db.query(Session).filter(
                 Session.user_id == current_user.id,
                 Session.id != current_session_id,
-                Session.is_revoked == False,
+                Session.is_revoked.is_(False),
             ).update({"is_revoked": True})
             db.commit()
         except TokenError:

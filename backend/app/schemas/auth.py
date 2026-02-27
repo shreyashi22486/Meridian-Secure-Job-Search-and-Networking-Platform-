@@ -1,6 +1,6 @@
 """Pydantic schemas for authentication endpoints."""
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from app.security.sanitizer import sanitize_string, sanitize_email
 
