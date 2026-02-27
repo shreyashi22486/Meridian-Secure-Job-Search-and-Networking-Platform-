@@ -31,15 +31,14 @@ class FileValidationError(Exception):
 # PDF magic bytes
 PDF_MAGIC_BYTES = b"%PDF-"
 
-# Suspicious patterns in PDF content that may indicate malicious payloads
+# Suspicious patterns in PDF content that may indicate malicious payloads.
+# We block high-risk elements while allowing common benign tags like /OpenAction.
 MALICIOUS_PATTERNS = [
-    b"/JS",           # JavaScript action
-    b"/JavaScript",   # JavaScript dictionary
-    b"/Launch",       # Launch action (can execute commands)
-    b"/OpenAction",   # Auto-execute on open
-    b"/AA",           # Additional actions
-    b"/RichMedia",    # Embedded Flash/media
-    b"/AcroForm",     # Can contain JavaScript in form fields
+    b"/JS",             # JavaScript action
+    b"/JavaScript",     # JavaScript dictionary
+    b"/Launch",         # Launch action (can execute commands)
+    b"/RichMedia",      # Embedded Flash/media
+    b"/EmbeddedFiles",  # Can hide malicious attachments
 ]
 
 
