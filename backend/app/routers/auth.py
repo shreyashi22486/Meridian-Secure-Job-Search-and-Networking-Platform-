@@ -60,7 +60,7 @@ def _set_auth_cookies(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True,
+        secure=settings.SECURE_COOKIES,
         samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
@@ -69,7 +69,7 @@ def _set_auth_cookies(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=settings.SECURE_COOKIES,
         samesite="lax",
         max_age=settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60,
         path="/api/auth/refresh",  # Scoped to refresh endpoint only
@@ -646,7 +646,7 @@ async def get_csrf_token(response: Response):
         key=CSRF_COOKIE_NAME,
         value=token,
         httponly=False,  # Must be readable by JS for double-submit
-        secure=True,
+        secure=settings.SECURE_COOKIES,
         samesite="lax",
         max_age=3600,
     )

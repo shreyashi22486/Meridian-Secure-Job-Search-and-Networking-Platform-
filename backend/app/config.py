@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # App
     APP_NAME: str = "Nexora"
     DEBUG: bool = False
+    # Cookie Secure flag — set True with CA-signed certs, False with self-signed
+    # When False, nginx 301 redirect still enforces HTTPS-only transport
+    SECURE_COOKIES: bool = False
 
     @property
     def cors_origins_list(self) -> List[str]:

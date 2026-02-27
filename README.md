@@ -153,6 +153,36 @@ docker compose up --build
 | API Docs   | http://localhost:8000/api/docs (debug mode only) |
 | PostgreSQL | localhost:5432              |
 
+## 🖥️ Server Management (Manual Deployment)
+
+If you are running the app directly on a VM (outside Docker), use these commands to manage services:
+
+### Backend (FastAPI/Uvicorn)
+```bash
+# To stop the backend
+pkill -f uvicorn
+
+# To start the backend in the background
+cd backend
+source venv/bin/activate
+nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload > /tmp/uvicorn.log 2>&1 &
+
+# To view logs
+tail -f /tmp/uvicorn.log
+```
+
+### Frontend (React/Nginx)
+```bash
+# To rebuild the frontend after changes
+cd frontend
+npm run build
+
+# Nginx serves the 'dist' folder automatically. 
+# If you change the Nginx config:
+sudo nginx -t          # Test config
+sudo nginx -s reload   # Reload Nginx
+```
+
 ## ⚙️ Environment Variables
 
 | Variable | Description | Required |

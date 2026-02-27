@@ -22,7 +22,8 @@ export default function Login() {
             if (data.requires_2fa) {
                 setTempToken(data.temp_token);
             } else {
-                navigate('/dashboard');
+                // Full page reload ensures React state is fresh from cookies
+                window.location.href = '/dashboard';
             }
         } catch (err) {
             setError(err.response?.data?.detail || 'Login failed');
@@ -37,7 +38,7 @@ export default function Login() {
         setLoading(true);
         try {
             await verify2FA(otpCode, tempToken);
-            navigate('/dashboard');
+            window.location.href = '/dashboard';
         } catch (err) {
             setError(err.response?.data?.detail || 'Invalid OTP code');
         } finally {

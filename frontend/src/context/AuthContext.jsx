@@ -11,8 +11,10 @@ export function AuthProvider({ children }) {
         try {
             const { data } = await userApi.me();
             setUser(data);
+            return data;
         } catch {
             setUser(null);
+            return null;
         } finally {
             setLoading(false);
         }
@@ -29,7 +31,8 @@ export function AuthProvider({ children }) {
     const login = async (email, password) => {
         const { data } = await authApi.login({ email, password });
         if (data.requires_2fa) return data;
-        await fetchUser();
+        const userData = await fetchUser();
+        if (!userData) throw new Error('Failed to fetch user after login');
         return data;
     };
 
@@ -56,3 +59,5 @@ export function AuthProvider({ children }) {
 }
 
 export const useAuth = () => useContext(AuthContext);
+
+

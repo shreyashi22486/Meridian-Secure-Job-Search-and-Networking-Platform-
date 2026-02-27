@@ -34,6 +34,7 @@ UNSAFE_METHODS = {"POST", "PUT", "DELETE", "PATCH"}
 CSRF_EXEMPT_PATHS = {
     "/api/auth/login",
     "/api/auth/register",
+    "/api/auth/verify-2fa",  # Protected by temp_token JWT, CSRF redundant
     "/api/auth/csrf",
 }
 

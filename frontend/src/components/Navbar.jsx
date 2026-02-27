@@ -33,7 +33,7 @@ export default function Navbar() {
                             <Link to="/dashboard" className="nav-link">Dashboard</Link>
                             <Link to="/resumes" className="nav-link">Resumes</Link>
                             <Link to="/profile" className="nav-link">Profile</Link>
-                            {user.role === 'admin' && (
+                            {user.role?.toLowerCase() === 'admin' && (
                                 <Link to="/admin" className="nav-link nav-link-admin">Admin</Link>
                             )}
                             <button onClick={handleLogout} className="btn btn-ghost btn-sm">Logout</button>
