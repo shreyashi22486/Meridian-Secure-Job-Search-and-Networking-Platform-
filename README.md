@@ -113,6 +113,7 @@ pdflatex main.tex  # Run twice for TOC
 
 | Member | GitHub |
 |--------|--------|
+| Aniket Gupta | [@aniket-3001](https://github.com/aniket-3001) |
 | Angadjeet Singh | [@ANGADJEET](https://github.com/ANGADJEET) |
 | Harsh Kumar | [@hrsh-kr](https://github.com/hrsh-kr) |
 
