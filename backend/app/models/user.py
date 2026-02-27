@@ -14,8 +14,9 @@ from datetime import datetime
 from sqlalchemy import (
     Column, String, Boolean, Integer, DateTime, Enum, Text
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
+
 from app.database import Base
 
 
@@ -34,10 +35,13 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
 
-    # Profile fields (Milestone 2: profile management)
+    # Profile fields
     headline = Column(String(255), nullable=True)
     location = Column(String(255), nullable=True)
     bio = Column(Text, nullable=True)
+
+    # Avatar — UUID filename stored in ./data/avatars/ (never original name)
+    avatar_filename = Column(String(255), nullable=True)
 
     # RBAC
     role = Column(
@@ -68,6 +72,9 @@ class User(Base):
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
     used_otps = relationship("UsedOTP", back_populates="user", cascade="all, delete-orphan")
+    education = relationship("UserEducation", back_populates="user", cascade="all, delete-orphan", order_by="UserEducation.start_year.desc()")
+    experience = relationship("UserExperience", back_populates="user", cascade="all, delete-orphan", order_by="UserExperience.created_at.desc()")
+    skills = relationship("UserSkill", back_populates="user", cascade="all, delete-orphan", order_by="UserSkill.created_at")
 
     def __repr__(self) -> str:
         return f"<User {self.email} role={self.role.value}>"

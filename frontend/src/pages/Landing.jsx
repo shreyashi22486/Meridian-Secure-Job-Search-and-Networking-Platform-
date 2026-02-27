@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import Icon from '../components/Icons';
 
 export default function Landing() {
     return (
@@ -12,19 +13,20 @@ export default function Landing() {
                     <div className="hero-grid"></div>
                 </div>
                 <div className="hero-content">
-                    <div className="hero-badge">🔒 Enterprise-Grade Security</div>
+                    <div className="hero-badge">
+                        <Icon name="shieldCheck" size={14} /> Trusted & Secure Platform
+                    </div>
                     <h1 className="hero-title">
-                        The Future of <br />
-                        <span className="gradient-text">Secure Hiring</span>
+                        Where Talent Meets<br />
+                        <span className="gradient-text">Opportunity</span>
                     </h1>
                     <p className="hero-subtitle">
-                        Nexora protects every step of your recruitment journey with
-                        military-grade encryption, multi-factor authentication, and
-                        zero-trust architecture.
+                        Meridian connects professionals with top companies through a
+                        recruitment platform built on privacy, trust, and seamless experience.
                     </p>
                     <div className="hero-actions">
                         <Link to="/register" className="btn btn-primary btn-lg">
-                            Get Started Free →
+                            Get Started Free <Icon name="arrowRight" size={18} />
                         </Link>
                         <Link to="/login" className="btn btn-glass btn-lg">
                             Sign In
@@ -32,102 +34,75 @@ export default function Landing() {
                     </div>
                     <div className="hero-stats">
                         <div className="hero-stat">
-                            <span className="hero-stat-value">256-bit</span>
-                            <span className="hero-stat-label">AES Encryption</span>
+                            <span className="hero-stat-value">End-to-End</span>
+                            <span className="hero-stat-label">Encrypted Data</span>
                         </div>
                         <div className="hero-stat-divider"></div>
                         <div className="hero-stat">
-                            <span className="hero-stat-value">TOTP</span>
-                            <span className="hero-stat-label">2FA Protection</span>
+                            <span className="hero-stat-value">2FA</span>
+                            <span className="hero-stat-label">Protected Accounts</span>
                         </div>
                         <div className="hero-stat-divider"></div>
                         <div className="hero-stat">
-                            <span className="hero-stat-value">Zero</span>
-                            <span className="hero-stat-label">Data Leaks</span>
+                            <span className="hero-stat-value">100%</span>
+                            <span className="hero-stat-label">Privacy Focused</span>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Features Section */}
+            {/* Value Proposition */}
             <section className="features-section">
                 <div className="section-container">
-                    <div className="section-header">
-                        <span className="section-tag">Features</span>
-                        <h2 className="section-title">Security Without Compromise</h2>
-                        <p className="section-desc">Built from the ground up with OWASP Top 10 mitigation, defense-in-depth architecture, and privacy by design.</p>
+                    <div className="section-header-landing">
+                        <span className="section-tag">How It Works</span>
+                        <h2 className="section-title-landing">Your Career, Simplified</h2>
+                        <p className="section-desc">From building your profile to landing offers — every step is streamlined and secure.</p>
                     </div>
                     <div className="features-grid">
                         <div className="feature-card">
-                            <div className="feature-icon">🛡️</div>
-                            <h3>Argon2id Hashing</h3>
-                            <p>Passwords hashed with the winner of the Password Hashing Competition. Memory-hard, GPU-resistant, and future-proof.</p>
+                            <div className="feature-icon-wrap"><Icon name="user" size={24} /></div>
+                            <h3>Build Your Profile</h3>
+                            <p>Showcase your education, experience, and skills with a professional profile that stands out to recruiters.</p>
                         </div>
                         <div className="feature-card">
-                            <div className="feature-icon">🔑</div>
-                            <h3>TOTP Two-Factor</h3>
-                            <p>Time-based one-time passwords with encrypted secret storage. Works offline — no SMS or email required.</p>
+                            <div className="feature-icon-wrap"><Icon name="upload" size={24} /></div>
+                            <h3>Upload Securely</h3>
+                            <p>Your resumes are encrypted at rest with military-grade encryption. Only you and authorized recruiters can access them.</p>
                         </div>
                         <div className="feature-card">
-                            <div className="feature-icon">📄</div>
-                            <h3>Encrypted Resumes</h3>
-                            <p>Every document encrypted at rest with Fernet (AES-128-CBC + HMAC-SHA256). Multi-layer file validation prevents malicious uploads.</p>
+                            <div className="feature-icon-wrap"><Icon name="briefcase" size={24} /></div>
+                            <h3>Get Discovered</h3>
+                            <p>Recruiters find talent through our platform. Your data stays private until you choose to share it.</p>
                         </div>
                         <div className="feature-card">
-                            <div className="feature-icon">🔄</div>
-                            <h3>Token Rotation</h3>
-                            <p>Refresh tokens rotate on every use with reuse detection. Stolen tokens are immediately invalidated across all sessions.</p>
-                        </div>
-                        <div className="feature-card">
-                            <div className="feature-icon">🧹</div>
-                            <h3>XSS Prevention</h3>
-                            <p>All inputs sanitized with server-side bleach filtering. Content Security Policy headers block injection attacks.</p>
-                        </div>
-                        <div className="feature-card">
-                            <div className="feature-icon">📊</div>
-                            <h3>Audit Logging</h3>
-                            <p>Every security event tracked with IP, user agent, and timestamp. Full accountability for compliance and forensics.</p>
+                            <div className="feature-icon-wrap"><Icon name="shieldCheck" size={24} /></div>
+                            <h3>Stay Protected</h3>
+                            <p>Two-factor authentication, session management, and audit logging keep your account safe at every moment.</p>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Architecture Section */}
-            <section className="arch-section">
+            {/* Trust Bar */}
+            <section className="trust-section">
                 <div className="section-container">
-                    <div className="section-header">
-                        <span className="section-tag">Architecture</span>
-                        <h2 className="section-title">Defense in Depth</h2>
-                        <p className="section-desc">Multiple independent security layers ensure that no single point of failure compromises your data.</p>
-                    </div>
-                    <div className="arch-layers">
-                        <div className="arch-layer">
-                            <div className="arch-layer-number">01</div>
-                            <div className="arch-layer-content">
-                                <h3>Network Layer</h3>
-                                <p>Rate limiting, CORS policies, and security headers (HSTS, CSP, X-Frame-Options) stop attacks before they reach application logic.</p>
-                            </div>
+                    <div className="trust-bar">
+                        <div className="trust-item">
+                            <Icon name="lock" size={20} />
+                            <span>AES-256 Encryption</span>
                         </div>
-                        <div className="arch-layer">
-                            <div className="arch-layer-number">02</div>
-                            <div className="arch-layer-content">
-                                <h3>Authentication Layer</h3>
-                                <p>JWT with device fingerprinting, session binding, CSRF double-submit cookies, and account lockout after failed attempts.</p>
-                            </div>
+                        <div className="trust-item">
+                            <Icon name="fingerprint" size={20} />
+                            <span>TOTP Two-Factor</span>
                         </div>
-                        <div className="arch-layer">
-                            <div className="arch-layer-number">03</div>
-                            <div className="arch-layer-content">
-                                <h3>Authorization Layer</h3>
-                                <p>Role-based access control (RBAC) with privilege escalation prevention. Admins cannot modify their own roles.</p>
-                            </div>
+                        <div className="trust-item">
+                            <Icon name="shield" size={20} />
+                            <span>Zero Trust Architecture</span>
                         </div>
-                        <div className="arch-layer">
-                            <div className="arch-layer-number">04</div>
-                            <div className="arch-layer-content">
-                                <h3>Data Layer</h3>
-                                <p>Fernet encryption at rest, UUID-based identifiers prevent enumeration, and parameterized queries block SQL injection.</p>
-                            </div>
+                        <div className="trust-item">
+                            <Icon name="activity" size={20} />
+                            <span>Full Audit Trail</span>
                         </div>
                     </div>
                 </div>
@@ -137,10 +112,10 @@ export default function Landing() {
             <section className="cta-section">
                 <div className="section-container">
                     <div className="cta-card glass-card">
-                        <h2>Ready to Secure Your Hiring?</h2>
-                        <p>Join Nexora and experience recruitment built on trust, privacy, and uncompromising security.</p>
+                        <h2>Ready to Take the Next Step?</h2>
+                        <p>Join thousands of professionals building their careers on a platform they can trust.</p>
                         <Link to="/register" className="btn btn-primary btn-lg">
-                            Create Your Account →
+                            Create Your Account <Icon name="arrowRight" size={18} />
                         </Link>
                     </div>
                 </div>
@@ -151,9 +126,13 @@ export default function Landing() {
                 <div className="section-container">
                     <div className="footer-content">
                         <div className="footer-brand">
-                            <span className="brand-icon">◆</span> Nexora
+                            <svg width="18" height="18" viewBox="0 0 32 32" fill="none">
+                                <rect width="32" height="32" rx="8" fill="url(#mf-grad)" />
+                                <path d="M8 22V10l8 7 8-7v12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                                <defs><linearGradient id="mf-grad" x1="0" y1="0" x2="32" y2="32"><stop stopColor="#6366f1" /><stop offset="1" stopColor="#a78bfa" /></linearGradient></defs>
+                            </svg> Meridian
                         </div>
-                        <p className="footer-text">Secure Job Portal — Built with FastAPI, React, and PostgreSQL</p>
+                        <p className="footer-text">The Secure Recruitment Platform</p>
                     </div>
                 </div>
             </footer>

@@ -27,7 +27,9 @@ class Settings(BaseSettings):
 
     # File uploads
     UPLOAD_DIR: str = "./data/resumes"
+    AVATAR_DIR: str = "./data/avatars"
     MAX_UPLOAD_SIZE: int = 2_097_152  # 2 MB
+    MAX_AVATAR_SIZE: int = 2_097_152  # 2 MB
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173"

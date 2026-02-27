@@ -2,8 +2,8 @@
 Users router — profile management.
 
 Endpoints:
-- GET /me: current user profile
-- PUT /me: update profile fields
+- GET /me: current user profile (now includes education, experience, skills)
+- PUT /me: update basic profile fields (name, headline, location, bio)
 - PUT /me/password: change password (requires re-authentication)
 - GET /{id}: view user (recruiter/admin only)
 """
@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserProfile, UpdateProfileRequest
+from app.schemas.profile import EducationItem, ExperienceItem, SkillItem
 from app.schemas.auth import ChangePasswordRequest
 from app.security.password import (
     hash_password, verify_password, validate_password_strength,
@@ -26,22 +27,52 @@ from app.utils import get_client_ip, log_audit
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
 
+def build_profile(user: User) -> UserProfile:
+    """Build a full UserProfile response from an ORM User object."""
+    avatar_url = f"/api/users/me/avatar" if user.avatar_filename else None
+    return UserProfile(
+        id=str(user.id),
+        email=user.email,
+        full_name=user.full_name,
+        headline=user.headline,
+        location=user.location,
+        bio=user.bio,
+        avatar_url=avatar_url,
+        role=user.role.value,
+        is_totp_enabled=user.is_totp_enabled,
+        created_at=user.created_at,
+        education=[EducationItem.from_orm_with_str_id(e) for e in user.education],
+        experience=[ExperienceItem.from_orm_with_str_id(e) for e in user.experience],
+        skills=[SkillItem.from_orm_with_str_id(s) for s in user.skills],
+    )
+
+
+def build_profile_for_user(user: User, viewer_id: str) -> UserProfile:
+    """Build profile for viewing another user — avatar URL uses their ID."""
+    avatar_url = f"/api/users/{user.id}/avatar" if user.avatar_filename else None
+    return UserProfile(
+        id=str(user.id),
+        email=user.email,
+        full_name=user.full_name,
+        headline=user.headline,
+        location=user.location,
+        bio=user.bio,
+        avatar_url=avatar_url,
+        role=user.role.value,
+        is_totp_enabled=user.is_totp_enabled,
+        created_at=user.created_at,
+        education=[EducationItem.from_orm_with_str_id(e) for e in user.education],
+        experience=[ExperienceItem.from_orm_with_str_id(e) for e in user.experience],
+        skills=[SkillItem.from_orm_with_str_id(s) for s in user.skills],
+    )
+
+
 @router.get("/me", response_model=UserProfile)
 async def get_my_profile(
     current_user: User = Depends(get_current_user),
 ):
-    """Get the current user's profile."""
-    return UserProfile(
-        id=str(current_user.id),
-        email=current_user.email,
-        full_name=current_user.full_name,
-        headline=current_user.headline,
-        location=current_user.location,
-        bio=current_user.bio,
-        role=current_user.role.value,
-        is_totp_enabled=current_user.is_totp_enabled,
-        created_at=current_user.created_at,
-    )
+    """Get the current user's full profile including education, experience, skills."""
+    return build_profile(current_user)
 
 
 @router.put("/me", response_model=UserProfile)
@@ -52,7 +83,7 @@ async def update_profile(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Update profile fields. All inputs are sanitized by the schema validators.
+    Update basic profile fields. All inputs are sanitized by schema validators.
     Only provided fields are updated (partial update).
     """
     update_data = data.model_dump(exclude_unset=True)
@@ -73,17 +104,7 @@ async def update_profile(
               ip_address=get_client_ip(request),
               details={"fields": list(update_data.keys())})
 
-    return UserProfile(
-        id=str(current_user.id),
-        email=current_user.email,
-        full_name=current_user.full_name,
-        headline=current_user.headline,
-        location=current_user.location,
-        bio=current_user.bio,
-        role=current_user.role.value,
-        is_totp_enabled=current_user.is_totp_enabled,
-        created_at=current_user.created_at,
-    )
+    return build_profile(current_user)
 
 
 @router.put("/me/password")
@@ -172,7 +193,7 @@ async def get_user_profile(
     current_user: User = Depends(require_recruiter_or_admin),
 ):
     """
-    View another user's profile. Restricted to recruiters and admins.
+    View another user's full profile. Restricted to recruiters and admins.
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -181,14 +202,4 @@ async def get_user_profile(
             detail="User not found",
         )
 
-    return UserProfile(
-        id=str(user.id),
-        email=user.email,
-        full_name=user.full_name,
-        headline=user.headline,
-        location=user.location,
-        bio=user.bio,
-        role=user.role.value,
-        is_totp_enabled=user.is_totp_enabled,
-        created_at=user.created_at,
-    )
+    return build_profile_for_user(user, str(current_user.id))

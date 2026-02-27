@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Icon from '../components/Icons';
 
 export default function Login() {
     const { login, verify2FA } = useAuth();
@@ -22,7 +23,6 @@ export default function Login() {
             if (data.requires_2fa) {
                 setTempToken(data.temp_token);
             } else {
-                // Full page reload ensures React state is fresh from cookies
                 window.location.href = '/dashboard';
             }
         } catch (err) {
@@ -51,8 +51,10 @@ export default function Login() {
             <div className="auth-page">
                 <div className="auth-card glass-card">
                     <div className="auth-header">
-                        <span className="auth-icon">🔑</span>
-                        <h1>Two-Factor Authentication</h1>
+                        <div className="auth-avatar">
+                            <Icon name="key" size={28} />
+                        </div>
+                        <h1>Two-Factor Verification</h1>
                         <p>Enter the 6-digit code from your authenticator app</p>
                     </div>
                     <form onSubmit={handle2FA}>
@@ -71,7 +73,7 @@ export default function Login() {
                             />
                         </div>
                         <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-                            {loading ? 'Verifying...' : 'Verify'}
+                            {loading ? 'Verifying…' : 'Verify & Sign In'}
                         </button>
                     </form>
                 </div>
@@ -83,14 +85,26 @@ export default function Login() {
         <div className="auth-page">
             <div className="auth-card glass-card">
                 <div className="auth-header">
-                    <span className="auth-icon">🔐</span>
+                    <div className="auth-avatar">
+                        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="28" cy="28" r="28" fill="url(#avatar-grad)" />
+                            <circle cx="28" cy="22" r="9" fill="rgba(255,255,255,0.85)" />
+                            <path d="M12 44.5C12 37.5 19.2 32 28 32C36.8 32 44 37.5 44 44.5" fill="rgba(255,255,255,0.85)" />
+                            <defs>
+                                <linearGradient id="avatar-grad" x1="0" y1="0" x2="56" y2="56">
+                                    <stop stopColor="var(--primary)" />
+                                    <stop offset="1" stopColor="var(--accent)" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
                     <h1>Welcome Back</h1>
-                    <p>Sign in to your secure account</p>
+                    <p>Sign in to your account</p>
                 </div>
                 <form onSubmit={handleLogin}>
                     {error && <div className="alert alert-error">{error}</div>}
                     <div className="form-group">
-                        <label htmlFor="email">Email</label>
+                        <label htmlFor="email">Email Address</label>
                         <input
                             id="email"
                             type="email"
@@ -112,11 +126,11 @@ export default function Login() {
                         />
                     </div>
                     <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-                        {loading ? 'Signing in...' : 'Sign In'}
+                        {loading ? 'Signing in…' : 'Sign In'}
                     </button>
                 </form>
                 <p className="auth-footer">
-                    Don&apos;t have an account? <Link to="/register">Register</Link>
+                    Don&apos;t have an account? <Link to="/register">Create one</Link>
                 </p>
             </div>
         </div>

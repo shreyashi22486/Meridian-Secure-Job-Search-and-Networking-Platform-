@@ -60,10 +60,39 @@ export const authApi = {
 // ─── Users ────────────────────────────────────────────────────────────────
 
 export const userApi = {
+    // Core profile
     me: () => api.get('/users/me'),
     updateProfile: (data) => api.put('/users/me', data),
     changePassword: (data) => api.put('/users/me/password', data),
     getUser: (id) => api.get(`/users/${id}`),
+
+    // Avatar — upload via multipart, serve via authenticated blob fetch
+    avatarUpload: (file) => {
+        const fd = new FormData();
+        fd.append('file', file);
+        return api.put('/users/me/avatar', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
+    // Returns a blob URL suitable for <img src="...">
+    getMyAvatarBlob: async () => {
+        const resp = await api.get('/users/me/avatar', { responseType: 'blob' });
+        return URL.createObjectURL(resp.data);
+    },
+
+    // Education CRUD
+    addEducation: (data) => api.post('/users/me/education', data),
+    updateEducation: (id, data) => api.put(`/users/me/education/${id}`, data),
+    deleteEducation: (id) => api.delete(`/users/me/education/${id}`),
+
+    // Experience CRUD
+    addExperience: (data) => api.post('/users/me/experience', data),
+    updateExperience: (id, data) => api.put(`/users/me/experience/${id}`, data),
+    deleteExperience: (id) => api.delete(`/users/me/experience/${id}`),
+
+    // Skills
+    addSkill: (data) => api.post('/users/me/skills', data),
+    deleteSkill: (id) => api.delete(`/users/me/skills/${id}`),
 };
 
 // ─── Resumes ──────────────────────────────────────────────────────────────

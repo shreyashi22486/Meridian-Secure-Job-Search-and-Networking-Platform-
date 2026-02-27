@@ -1,22 +1,27 @@
 """Pydantic schemas for user profile endpoints."""
 
 from pydantic import BaseModel, field_validator
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from app.security.sanitizer import sanitize_string
+from app.schemas.profile import EducationItem, ExperienceItem, SkillItem
 
 
 class UserProfile(BaseModel):
-    """Public user profile response."""
+    """Public user profile response — includes nested education, experience, skills."""
     id: str
     email: str
     full_name: str
     headline: Optional[str] = None
     location: Optional[str] = None
     bio: Optional[str] = None
+    avatar_url: Optional[str] = None   # e.g. "/api/users/me/avatar" or None
     role: str
     is_totp_enabled: bool
     created_at: datetime
+    education: List[EducationItem] = []
+    experience: List[ExperienceItem] = []
+    skills: List[SkillItem] = []
 
     model_config = {"from_attributes": True}
 

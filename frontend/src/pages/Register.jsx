@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Icon from '../components/Icons';
 
 export default function Register() {
     const { register } = useAuth();
@@ -37,9 +38,23 @@ export default function Register() {
         <div className="auth-page">
             <div className="auth-card glass-card">
                 <div className="auth-header">
-                    <span className="auth-icon">✨</span>
+                    <div className="auth-avatar">
+                        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="28" cy="28" r="28" fill="url(#reg-grad)" />
+                            <circle cx="28" cy="22" r="9" fill="rgba(255,255,255,0.85)" />
+                            <path d="M12 44.5C12 37.5 19.2 32 28 32C36.8 32 44 37.5 44 44.5" fill="rgba(255,255,255,0.85)" />
+                            <line x1="40" y1="14" x2="40" y2="24" stroke="rgba(255,255,255,0.85)" strokeWidth="2.5" strokeLinecap="round" />
+                            <line x1="35" y1="19" x2="45" y2="19" stroke="rgba(255,255,255,0.85)" strokeWidth="2.5" strokeLinecap="round" />
+                            <defs>
+                                <linearGradient id="reg-grad" x1="0" y1="0" x2="56" y2="56">
+                                    <stop stopColor="var(--primary)" />
+                                    <stop offset="1" stopColor="var(--accent)" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
                     <h1>Create Account</h1>
-                    <p>Join the secure job network</p>
+                    <p>Join the secure recruitment platform</p>
                 </div>
                 <form onSubmit={handleSubmit}>
                     {error && <div className="alert alert-error">{error}</div>}
@@ -49,7 +64,7 @@ export default function Register() {
                             onChange={(e) => setFullName(e.target.value)} placeholder="Jane Doe" required />
                     </div>
                     <div className="form-group">
-                        <label htmlFor="email">Email</label>
+                        <label htmlFor="email">Email Address</label>
                         <input id="email" type="email" value={email}
                             onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
                     </div>
@@ -65,7 +80,7 @@ export default function Register() {
                             onChange={(e) => setConfirm(e.target.value)} placeholder="Repeat password" required />
                     </div>
                     <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-                        {loading ? 'Creating account...' : 'Register'}
+                        {loading ? 'Creating account…' : 'Create Account'}
                     </button>
                 </form>
                 <p className="auth-footer">

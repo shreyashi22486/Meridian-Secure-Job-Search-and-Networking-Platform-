@@ -16,14 +16,16 @@ from app.security.headers import SecurityHeadersMiddleware
 from app.security.csrf import CSRFMiddleware
 from app.security.rate_limiter import RateLimitMiddleware
 from app.routers import auth, users, resumes, admin
+from app.routers import profile as profile_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
-    # Startup: create tables and upload directory
+    # Startup: create tables and upload directories
     Base.metadata.create_all(bind=engine)
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    os.makedirs(settings.AVATAR_DIR, exist_ok=True)
     yield
     # Shutdown: cleanup if needed
 
@@ -64,6 +66,7 @@ app.add_middleware(CSRFMiddleware)
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(profile_router.router)
 app.include_router(resumes.router)
 app.include_router(admin.router)
 
