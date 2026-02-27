@@ -69,7 +69,7 @@ async def upload_resume(
     # 2. Encrypt the file content
     try:
         encrypted_content = encrypt_file(validated_content)
-    except FileEncryptionError as e:
+    except FileEncryptionError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="File processing error",

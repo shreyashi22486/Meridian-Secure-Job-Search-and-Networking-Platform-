@@ -13,7 +13,6 @@ OTP replay prevention: Each code can only be used once per time window.
 import io
 import time
 import base64
-from typing import Optional
 
 import pyotp
 import qrcode

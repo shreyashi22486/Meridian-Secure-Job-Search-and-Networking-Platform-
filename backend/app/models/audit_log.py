@@ -5,7 +5,6 @@ AuditLog: Records security-relevant actions for monitoring and forensics.
 UsedOTP: Prevents TOTP replay attacks by tracking recently used codes.
 """
 
-import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB

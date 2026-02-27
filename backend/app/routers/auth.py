@@ -13,7 +13,6 @@ Security features:
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session as DBSession
@@ -25,7 +24,6 @@ from app.schemas.auth import (
     RegisterRequest, LoginRequest, Verify2FARequest,
     Confirm2FARequest, TokenResponse, LoginResponse,
     Setup2FAResponse, CSRFTokenResponse,
-    ChangePasswordRequest,
 )
 from app.security.password import (
     hash_password, verify_password, validate_password_strength,
@@ -594,7 +592,7 @@ async def list_sessions(
     """List all active sessions for the current user."""
     sessions = db.query(Session).filter(
         Session.user_id == current_user.id,
-        Session.is_revoked == False,
+        Session.is_revoked.is_(False),
         Session.expires_at > datetime.utcnow(),
     ).all()
 

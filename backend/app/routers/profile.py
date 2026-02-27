@@ -21,7 +21,6 @@ Security:
 
 import os
 import uuid
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, status
 from fastapi.responses import StreamingResponse

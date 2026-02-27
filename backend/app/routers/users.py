@@ -29,7 +29,7 @@ router = APIRouter(prefix="/api/users", tags=["Users"])
 
 def build_profile(user: User) -> UserProfile:
     """Build a full UserProfile response from an ORM User object."""
-    avatar_url = f"/api/users/me/avatar" if user.avatar_filename else None
+    avatar_url = "/api/users/me/avatar" if user.avatar_filename else None
     return UserProfile(
         id=str(user.id),
         email=user.email,

@@ -10,8 +10,7 @@ Security architecture:
 Every protected endpoint uses these as Depends() — no ad-hoc auth checks.
 """
 
-from typing import List, Callable, Optional
-from uuid import UUID
+from typing import Callable
 
 from fastapi import Depends, Request, HTTPException, status
 from sqlalchemy.orm import Session as DBSession
@@ -83,7 +82,7 @@ async def get_current_user(
     if session_id:
         session = db.query(Session).filter(
             Session.id == session_id,
-            Session.is_revoked == False,
+            Session.is_revoked.is_(False),
         ).first()
 
         if not session:

@@ -17,7 +17,7 @@ from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.audit_log import AuditLog
 from app.schemas.user import UserListItem
-from app.dependencies import get_current_user, require_admin
+from app.dependencies import require_admin
 from app.utils import get_client_ip, log_audit
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
@@ -160,7 +160,7 @@ async def suspend_user(
         from app.models.session import Session
         db.query(Session).filter(
             Session.user_id == target_user.id,
-            Session.is_revoked == False,
+            Session.is_revoked.is_(False),
         ).update({"is_revoked": True})
         db.commit()
 
