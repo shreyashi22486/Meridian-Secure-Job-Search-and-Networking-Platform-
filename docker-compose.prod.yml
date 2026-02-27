@@ -58,3 +58,4 @@ volumes:
   pgdata:
   resume_data:
   avatar_data:
+# Deployment trigger
