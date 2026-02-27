@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════
-#  NEXORA — Milestone 2 Comprehensive Test Script
+#  MERIDIAN — Milestone 2 Comprehensive Test Script
 #  Tests all 5 goals: Auth, TOTP 2FA, Profile, Resume+Encryption, Admin
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -10,8 +10,8 @@ set -euo pipefail
 # triggering the rate limiter (5 login attempts/minute).
 
 API="http://localhost:8000/api"
-COOKIES="/tmp/nexora_test_cookies.txt"
-ADMIN_COOKIES="/tmp/nexora_test_admin_cookies.txt"
+COOKIES="/tmp/meridian_test_cookies.txt"
+ADMIN_COOKIES="/tmp/meridian_test_admin_cookies.txt"
 PASS=0
 FAIL=0
 TOTAL=0
@@ -88,7 +88,7 @@ get_csrf() {
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}║     NEXORA — Milestone 2 Test Suite                  ║${NC}"
+echo -e "${BOLD}║     MERIDIAN — Milestone 2 Test Suite                  ║${NC}"
 echo -e "${BOLD}║     Testing: Auth, 2FA, Profile, Resume, Admin       ║${NC}"
 echo -e "${BOLD}╚══════════════════════════════════════════════════════╝${NC}"
 
@@ -305,14 +305,14 @@ check_http_code "Unauthenticated rejected" "401" "$HTTP_CODE" "$BODY"
 print_header "4. SECURE RESUME UPLOAD & ENCRYPTION"
 
 # Create a test PDF file
-echo "%PDF-1.4 Test resume content for Nexora milestone 2 verification" > /tmp/nexora_test.pdf
+echo "%PDF-1.4 Test resume content for Meridian milestone 2 verification" > /tmp/meridian_test.pdf
 
 # --- 4.1 Upload PDF ---
 print_test "Resume Upload (PDF)" "POST /resumes/upload with a PDF should succeed"
 RESP=$(curl -s -X POST "$API/resumes/upload" \
     -H "X-CSRF-Token: $CSRF_TOKEN" \
     -b "$COOKIES" -c "$COOKIES" \
-    -F "file=@/tmp/nexora_test.pdf")
+    -F "file=@/tmp/meridian_test.pdf")
 check_result "Resume uploaded" "original_filename" "$RESP"
 RESUME_ID=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
 
@@ -341,16 +341,16 @@ fi
 # --- 4.3 List Resumes ---
 print_test "List Resumes" "GET /resumes/me should list uploaded resumes"
 RESP=$(curl -s "$API/resumes/me" -b "$COOKIES")
-check_result "Resume listed" "nexora_test.pdf" "$RESP"
+check_result "Resume listed" "meridian_test.pdf" "$RESP"
 
 # --- 4.4 Download Resume (Decrypted) ---
 if [ -n "$RESUME_ID" ]; then
     print_test "Download Resume" "GET /resumes/{id}/download should return decrypted PDF"
-    RESP=$(curl -s -o /tmp/nexora_download.pdf -w "%{http_code}" \
+    RESP=$(curl -s -o /tmp/meridian_download.pdf -w "%{http_code}" \
         "$API/resumes/$RESUME_ID/download" -b "$COOKIES")
     TOTAL=$((TOTAL + 1))
     if [ "$RESP" = "200" ]; then
-        DL_HEADER=$(head -c 5 /tmp/nexora_download.pdf 2>/dev/null)
+        DL_HEADER=$(head -c 5 /tmp/meridian_download.pdf 2>/dev/null)
         if echo "$DL_HEADER" | grep -q "%PDF"; then
             PASS=$((PASS + 1))
             echo -e "  ${GREEN}✅ PASS${NC} — Downloaded file is decrypted PDF"
@@ -366,11 +366,11 @@ fi
 
 # --- 4.5 Non-PDF Upload ---
 print_test "Non-PDF Rejection" "Uploading a .txt file should be rejected"
-echo "This is not a PDF" > /tmp/nexora_fake.txt
+echo "This is not a PDF" > /tmp/meridian_fake.txt
 RESP=$(curl -s -w "\n%{http_code}" -X POST "$API/resumes/upload" \
     -H "X-CSRF-Token: $CSRF_TOKEN" \
     -b "$COOKIES" -c "$COOKIES" \
-    -F "file=@/tmp/nexora_fake.txt")
+    -F "file=@/tmp/meridian_fake.txt")
 HTTP_CODE=$(echo "$RESP" | tail -1)
 BODY=$(echo "$RESP" | head -n -1)
 TOTAL=$((TOTAL + 1))
@@ -529,7 +529,7 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Cleanup
-rm -f /tmp/nexora_test.pdf /tmp/nexora_fake.txt /tmp/nexora_download.pdf
+rm -f /tmp/meridian_test.pdf /tmp/meridian_fake.txt /tmp/meridian_download.pdf
 rm -f "$COOKIES" "$ADMIN_COOKIES"
 
 # Revert test user to normal

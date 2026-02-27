@@ -20,6 +20,7 @@ export default function Resumes() {
         }
     };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { fetchResumes(); }, []);
 
     const uploadFile = async (file) => {

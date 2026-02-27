@@ -29,6 +29,7 @@ export default function AdminPanel() {
         } catch { toast.error('Failed to load audit logs'); }
     };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { fetchUsers(); fetchLogs(); }, []);
 
     const handleRoleChange = async (userId, currentRole, newRole) => {
