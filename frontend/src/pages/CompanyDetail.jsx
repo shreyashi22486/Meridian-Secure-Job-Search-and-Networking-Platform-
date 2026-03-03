@@ -32,7 +32,7 @@ export default function CompanyDetail() {
             try {
                 const [compRes, jobsRes] = await Promise.all([
                     companyApi.get(id),
-                    jobApi.search({ company_id: id, limit: 50 }),
+                    jobApi.search({ company_id: id, limit: 50, status: 'all' }),
                 ]);
                 setCompany(compRes.data);
                 setJobs(jobsRes.data.jobs);
@@ -58,8 +58,8 @@ export default function CompanyDetail() {
                 location: jobForm.location || null,
                 work_type: jobForm.work_type || null,
                 job_type: jobForm.job_type || null,
-                salary_min: jobForm.salary_min ? parseInt(jobForm.salary_min) : null,
-                salary_max: jobForm.salary_max ? parseInt(jobForm.salary_max) : null,
+                salary_min: jobForm.salary_min ? Math.round(parseFloat(jobForm.salary_min) * 100000) : null,
+                salary_max: jobForm.salary_max ? Math.round(parseFloat(jobForm.salary_max) * 100000) : null,
                 required_skills: jobForm.required_skills ? jobForm.required_skills.split(',').map(s => s.trim()).filter(Boolean) : [],
                 application_deadline: jobForm.application_deadline || null,
             };
@@ -67,7 +67,7 @@ export default function CompanyDetail() {
             setShowJobForm(false);
             setJobForm({ title: '', description: '', location: '', work_type: '', job_type: '', salary_min: '', salary_max: '', required_skills: '', application_deadline: '' });
             // Refresh jobs
-            const { data } = await jobApi.search({ company_id: id, limit: 50 });
+            const { data } = await jobApi.search({ company_id: id, limit: 50, status: 'all' });
             setJobs(data.jobs);
         } catch (err) {
             setError(err.response?.data?.detail || 'Failed to create job posting');
@@ -209,12 +209,30 @@ export default function CompanyDetail() {
                             </select>
                         </div>
                         <div className="form-group">
-                            <label>Min Salary (₹)</label>
-                            <input type="number" value={jobForm.salary_min} onChange={(e) => setJobForm({ ...jobForm, salary_min: e.target.value })} placeholder="e.g. 500000" />
+                            <label>Min Salary (Lakhs LPA)</label>
+                            <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>₹</span>
+                                <input
+                                    type="number" step="0.1"
+                                    style={{ paddingLeft: '1.75rem' }}
+                                    placeholder="e.g. 5.0"
+                                    value={jobForm.salary_min}
+                                    onChange={(e) => setJobForm({ ...jobForm, salary_min: e.target.value })}
+                                />
+                            </div>
                         </div>
                         <div className="form-group">
-                            <label>Max Salary (₹)</label>
-                            <input type="number" value={jobForm.salary_max} onChange={(e) => setJobForm({ ...jobForm, salary_max: e.target.value })} placeholder="e.g. 1200000" />
+                            <label>Max Salary (Lakhs LPA)</label>
+                            <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>₹</span>
+                                <input
+                                    type="number" step="0.1"
+                                    style={{ paddingLeft: '1.75rem' }}
+                                    placeholder="e.g. 10.0"
+                                    value={jobForm.salary_max}
+                                    onChange={(e) => setJobForm({ ...jobForm, salary_max: e.target.value })}
+                                />
+                            </div>
                         </div>
                         <div className="form-group">
                             <label>Required Skills (comma-separated)</label>
@@ -256,6 +274,14 @@ export default function CompanyDetail() {
                                     {job.job_type && <span className="badge badge-success">{jobTypeLabels[job.job_type]}</span>}
                                     {!job.is_active && <span className="badge badge-danger">Closed</span>}
                                 </div>
+                                {job.required_skills?.length > 0 && (
+                                    <div className="skill-tags" style={{ marginTop: '0.5rem' }}>
+                                        {job.required_skills.slice(0, 5).map((skill, i) => (
+                                            <span key={i} className="skill-tag" style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}>{skill}</span>
+                                        ))}
+                                        {job.required_skills.length > 5 && <span className="text-muted" style={{ fontSize: '0.72rem' }}>+{job.required_skills.length - 5} more</span>}
+                                    </div>
+                                )}
                             </div>
                             <Icon name="chevronRight" size={16} style={{ color: 'var(--text-muted)' }} />
                         </Link>

@@ -17,6 +17,7 @@ export default function Jobs() {
     const [workType, setWorkType] = useState('');
     const [jobType, setJobType] = useState('');
     const [minSalary, setMinSalary] = useState('');
+    const [status, setStatus] = useState('active'); // 'active', 'inactive', 'all'
     const [page, setPage] = useState(0);
     const limit = 12;
 
@@ -29,6 +30,7 @@ export default function Jobs() {
             if (workType) params.work_type = workType;
             if (jobType) params.job_type = jobType;
             if (minSalary) params.min_salary = parseInt(minSalary);
+            if (status) params.status = status;
             const { data } = await jobApi.search(params);
             setJobs(data.jobs);
             setTotal(data.total);
@@ -48,7 +50,7 @@ export default function Jobs() {
     };
 
     const clearFilters = () => {
-        setKeyword(''); setLocation(''); setWorkType(''); setJobType(''); setMinSalary('');
+        setKeyword(''); setLocation(''); setWorkType(''); setJobType(''); setMinSalary(''); setStatus('active');
         setPage(0);
         setTimeout(() => fetchJobs(0), 0);
     };
@@ -128,7 +130,14 @@ export default function Jobs() {
                             className="role-select" style={{ padding: '0.5rem 0.75rem 0.5rem 1.4rem', width: '130px' }}
                         />
                     </div>
-                    {(keyword || location || workType || jobType || minSalary) && (
+                    {(user?.role?.toLowerCase() === 'recruiter' || user?.role?.toLowerCase() === 'admin') && (
+                        <select className="role-select" value={status} onChange={(e) => setStatus(e.target.value)} style={{ padding: '0.5rem 0.75rem' }}>
+                            <option value="active">Active Only</option>
+                            <option value="inactive">Inactive Only</option>
+                            <option value="all">Show All</option>
+                        </select>
+                    )}
+                    {(keyword || location || workType || jobType || minSalary || status !== 'active') && (
                         <button type="button" onClick={clearFilters} className="btn btn-ghost btn-xs">
                             <Icon name="x" size={12} /> Clear
                         </button>

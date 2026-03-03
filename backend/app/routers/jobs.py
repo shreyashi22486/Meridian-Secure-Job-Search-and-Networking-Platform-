@@ -121,6 +121,7 @@ async def search_jobs(
     work_type: Optional[str] = None,
     job_type: Optional[str] = None,
     skills: Optional[str] = None,  # comma-separated
+    status: Optional[str] = "active",
     min_salary: Optional[int] = None,
     company_id: Optional[str] = None,
     db: DBSession = Depends(get_db),
@@ -129,7 +130,21 @@ async def search_jobs(
     Search and filter job postings. Public endpoint.
     All queries use parameterized SQLAlchemy filters (SQL injection safe).
     """
-    query = db.query(Job).filter(Job.is_active.is_(True))
+    query = db.query(Job)
+    
+    # Status filter logic
+    if company_id:
+        # If searching for a specific company, default to showing everything 
+        # unless a specific status is requested.
+        effective_status = status if status in ["active", "inactive"] else "all"
+    else:
+        effective_status = status or "active"
+
+    if effective_status == "active":
+        query = query.filter(Job.is_active.is_(True))
+    elif effective_status == "inactive":
+        query = query.filter(Job.is_active.is_(False))
+    # 'all' means no filter on is_active
 
     # Keyword search in title and description
     if keyword:
