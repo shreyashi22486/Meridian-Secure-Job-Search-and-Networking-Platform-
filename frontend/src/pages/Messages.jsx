@@ -184,7 +184,7 @@ export default function Messages() {
             <div style={{
                 display: 'grid', gridTemplateColumns: '300px 1fr',
                 gap: 0, height: '100%', borderRadius: 'var(--radius)', overflow: 'hidden',
-                border: '1px solid var(--border)',
+                border: '1px solid var(--border)', minHeight: 0,
             }}>
                 {/* Sidebar */}
                 <div style={{ background: 'var(--bg-glass)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
@@ -294,7 +294,7 @@ export default function Messages() {
                 </div>
 
                 {/* Chat Area */}
-                <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-alt)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-alt)', minHeight: 0, overflow: 'hidden' }}>
                     {!activeConv ? (
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.5rem' }}>
                             <Icon name="mail" size={48} style={{ opacity: 0.2 }} />
