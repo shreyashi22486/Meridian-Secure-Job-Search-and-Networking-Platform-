@@ -23,7 +23,9 @@ export default function CompanyDetail() {
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
 
-    const isRecruiterOrAdmin = user?.role?.toLowerCase() === 'recruiter' || user?.role?.toLowerCase() === 'admin';
+    const canEditCompany = user?.role?.toLowerCase() === 'admin' ||
+        user?.role?.toLowerCase() === 'recruiter' ||
+        (company && user?.id === company.created_by);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -153,7 +155,7 @@ export default function CompanyDetail() {
                                 </div>
                             </div>
                         </div>
-                        {isRecruiterOrAdmin && (
+                        {canEditCompany && (
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <button className="btn btn-ghost btn-sm" onClick={() => { setIsEditing(true); setEditForm({ name: company.name, description: company.description, location: company.location, website: company.website }); }}>
                                     <Icon name="edit" size={13} /> Edit

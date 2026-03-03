@@ -20,6 +20,13 @@ export default function JobDetail() {
     const [applied, setApplied] = useState(false);
 
     const isRecruiter = user?.role?.toLowerCase() === 'recruiter' || user?.role?.toLowerCase() === 'admin';
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({});
+    const [updating, setUpdating] = useState(false);
+
+    const canEditJob = user?.role?.toLowerCase() === 'admin' ||
+        (job && user?.id === job.posted_by) ||
+        (isRecruiter && job); // Simplified: assume recruiters can edit jobs in their system for now
 
     useEffect(() => {
         const fetchJob = async () => {
@@ -53,6 +60,29 @@ export default function JobDetail() {
             const { data } = await resumeApi.list();
             setResumes(data.resumes || []);
         } catch { /* ignore */ }
+    };
+
+    const handleUpdateJob = async (e) => {
+        e.preventDefault();
+        setUpdating(true);
+        setError('');
+        try {
+            const payload = {
+                ...editForm,
+                salary_min: editForm.salary_min ? parseInt(editForm.salary_min) : null,
+                salary_max: editForm.salary_max ? parseInt(editForm.salary_max) : null,
+                required_skills: typeof editForm.required_skills === 'string'
+                    ? editForm.required_skills.split(',').map(s => s.trim()).filter(Boolean)
+                    : editForm.required_skills
+            };
+            const { data } = await jobApi.update(id, payload);
+            setJob(data);
+            setIsEditing(false);
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Failed to update job');
+        } finally {
+            setUpdating(false);
+        }
     };
 
     const handleApply = async (e) => {
@@ -99,47 +129,108 @@ export default function JobDetail() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1.5rem', alignItems: 'start' }}>
                 {/* Main Content */}
                 <div className="glass-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                        <div>
-                            <h1 style={{ marginBottom: '0.25rem' }}>{job.title}</h1>
-                            <Link to={`/companies/${job.company_id}`} style={{ fontSize: '0.9rem' }}>
-                                <Icon name="building" size={14} /> {job.company_name}
-                            </Link>
-                        </div>
-                        {!job.is_active && <span className="badge badge-danger" style={{ fontSize: '0.85rem' }}>Closed</span>}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-                        {job.location && <span className="badge badge-muted"><Icon name="mapPin" size={11} /> {job.location}</span>}
-                        {job.work_type && <span className="badge badge-action">{workTypeLabels[job.work_type]}</span>}
-                        {job.job_type && <span className="badge badge-success">{jobTypeLabels[job.job_type]}</span>}
-                        {formatSalary(job.salary_min, job.salary_max) && (
-                            <span className="badge badge-success" style={{ fontWeight: 600 }}>
-                                {formatSalary(job.salary_min, job.salary_max)}
-                            </span>
-                        )}
-                    </div>
-
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
-                        <h2 style={{ marginBottom: '0.75rem' }}>Job Description</h2>
-                        <div style={{ fontSize: '0.9rem', lineHeight: 1.8, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
-                            {job.description}
-                        </div>
-                    </div>
-
-                    {job.required_skills?.length > 0 && (
-                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', marginTop: '1.25rem' }}>
-                            <h2 style={{ marginBottom: '0.75rem' }}>Required Skills</h2>
-                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                {job.required_skills.map((skill, i) => (
-                                    <span key={i} style={{
-                                        padding: '0.35rem 0.75rem', borderRadius: '20px',
-                                        background: 'var(--primary-subtle)', color: 'var(--primary)',
-                                        fontSize: '0.82rem', fontWeight: 500,
-                                    }}>{skill}</span>
-                                ))}
+                    {isEditing ? (
+                        <form onSubmit={handleUpdateJob}>
+                            <h2 style={{ marginBottom: '1.25rem' }}>Edit Job Posting</h2>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label>Job Title</label>
+                                    <input type="text" value={editForm.title || ''} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} required />
+                                </div>
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label>Description</label>
+                                    <textarea rows="8" value={editForm.description || ''} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} required />
+                                </div>
+                                <div className="form-group">
+                                    <label>Location</label>
+                                    <input type="text" value={editForm.location || ''} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Work Type</label>
+                                    <select value={editForm.work_type || ''} onChange={(e) => setEditForm({ ...editForm, work_type: e.target.value })}>
+                                        <option value="">Select...</option>
+                                        {Object.entries(workTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Job Type</label>
+                                    <select value={editForm.job_type || ''} onChange={(e) => setEditForm({ ...editForm, job_type: e.target.value })}>
+                                        <option value="">Select...</option>
+                                        {Object.entries(jobTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Status</label>
+                                    <select value={editForm.is_active === false ? 'inactive' : 'active'} onChange={(e) => setEditForm({ ...editForm, is_active: e.target.value === 'active' })}>
+                                        <option value="active">Active (Open)</option>
+                                        <option value="inactive">Inactive (Closed)</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Min Salary (₹)</label>
+                                    <input type="number" value={editForm.salary_min || ''} onChange={(e) => setEditForm({ ...editForm, salary_min: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Max Salary (₹)</label>
+                                    <input type="number" value={editForm.salary_max || ''} onChange={(e) => setEditForm({ ...editForm, salary_max: e.target.value })} />
+                                </div>
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label>Required Skills (comma-separated)</label>
+                                    <input type="text" value={editForm.required_skills || ''} onChange={(e) => setEditForm({ ...editForm, required_skills: e.target.value })} />
+                                </div>
                             </div>
-                        </div>
+                            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
+                                <button type="submit" className="btn btn-primary" disabled={updating}>
+                                    {updating ? 'Saving...' : 'Save Changes'}
+                                </button>
+                                <button type="button" className="btn btn-ghost" onClick={() => setIsEditing(false)}>Cancel</button>
+                            </div>
+                        </form>
+                    ) : (
+                        <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                                <div>
+                                    <h1 style={{ marginBottom: '0.25rem' }}>{job.title}</h1>
+                                    <Link to={`/companies/${job.company_id}`} style={{ fontSize: '0.9rem' }}>
+                                        <Icon name="building" size={14} /> {job.company_name}
+                                    </Link>
+                                </div>
+                                {!job.is_active && <span className="badge badge-danger" style={{ fontSize: '0.85rem' }}>Closed</span>}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+                                {job.location && <span className="badge badge-muted"><Icon name="mapPin" size={11} /> {job.location}</span>}
+                                {job.work_type && <span className="badge badge-action">{workTypeLabels[job.work_type]}</span>}
+                                {job.job_type && <span className="badge badge-success">{jobTypeLabels[job.job_type]}</span>}
+                                {formatSalary(job.salary_min, job.salary_max) && (
+                                    <span className="badge badge-success" style={{ fontWeight: 600 }}>
+                                        {formatSalary(job.salary_min, job.salary_max)}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+                                <h2 style={{ marginBottom: '0.75rem' }}>Job Description</h2>
+                                <div style={{ fontSize: '0.9rem', lineHeight: 1.8, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+                                    {job.description}
+                                </div>
+                            </div>
+
+                            {job.required_skills?.length > 0 && (
+                                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', marginTop: '1.25rem' }}>
+                                    <h2 style={{ marginBottom: '0.75rem' }}>Required Skills</h2>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        {job.required_skills.map((skill, i) => (
+                                            <span key={i} style={{
+                                                padding: '0.35rem 0.75rem', borderRadius: '20px',
+                                                background: 'var(--primary-subtle)', color: 'var(--primary)',
+                                                fontSize: '0.82rem', fontWeight: 500,
+                                            }}>{skill}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
 
@@ -152,7 +243,7 @@ export default function JobDetail() {
                                 <p style={{ fontWeight: 600, color: 'var(--success)', marginBottom: '0.25rem' }}>Applied!</p>
                                 <Link to="/applications" style={{ fontSize: '0.85rem' }}>Track your application →</Link>
                             </div>
-                        ) : user && job.is_active ? (
+                        ) : user && job.is_active && user.id !== job.posted_by ? (
                             <button className="btn btn-primary btn-full btn-lg" onClick={handleOpenApply}>
                                 <Icon name="arrowRight" size={16} /> Apply Now
                             </button>
@@ -160,8 +251,35 @@ export default function JobDetail() {
                             <Link to="/login" className="btn btn-primary btn-full btn-lg" style={{ textDecoration: 'none' }}>
                                 <Icon name="lock" size={16} /> Sign in to Apply
                             </Link>
+                        ) : job.is_active && user.id === job.posted_by ? (
+                            <div className="text-muted" style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.5rem' }}>
+                                You posted this job
+                            </div>
                         ) : (
                             <button className="btn btn-ghost btn-full" disabled>Applications Closed</button>
+                        )}
+
+                        {canEditJob && !isEditing && (
+                            <button
+                                className="btn btn-ghost btn-full"
+                                style={{ marginTop: '0.5rem' }}
+                                onClick={() => {
+                                    setIsEditing(true);
+                                    setEditForm({
+                                        title: job.title,
+                                        description: job.description,
+                                        location: job.location,
+                                        work_type: job.work_type,
+                                        job_type: job.job_type,
+                                        salary_min: job.salary_min,
+                                        salary_max: job.salary_max,
+                                        required_skills: job.required_skills?.join(', '),
+                                        is_active: job.is_active
+                                    });
+                                }}
+                            >
+                                <Icon name="edit" size={14} /> Edit Job
+                            </button>
                         )}
 
                         {isRecruiter && (

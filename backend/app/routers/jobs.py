@@ -223,7 +223,10 @@ async def update_job(
             detail="Job not found",
         )
 
-    _check_company_admin(db, job.company_id, current_user)
+    # Only company admins, platform admins, or the original poster can update
+    is_poster = (job.posted_by == current_user.id)
+    if not is_poster:
+        _check_company_admin(db, job.company_id, current_user)
 
     update_data = data.model_dump(exclude_unset=True)
     if not update_data:
@@ -266,7 +269,10 @@ async def delete_job(
             detail="Job not found",
         )
 
-    _check_company_admin(db, job.company_id, current_user)
+    # Only company admins, platform admins, or the original poster can delete
+    is_poster = (job.posted_by == current_user.id)
+    if not is_poster:
+        _check_company_admin(db, job.company_id, current_user)
 
     job_title = job.title
     company_id = str(job.company_id)
