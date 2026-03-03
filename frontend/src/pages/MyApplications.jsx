@@ -83,24 +83,30 @@ export default function MyApplications() {
                                 </div>
 
                                 {/* Status Timeline */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', margin: '0.75rem 0', padding: '0.5rem 0' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', margin: '0.75rem 0', padding: '0.5rem 0' }}>
                                     {statusOrder.map((s, i) => {
                                         const isActive = !isRejected && i <= currentIdx;
                                         const isCurrent = s === app.status;
                                         return (
-                                            <div key={s} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                                                <div style={{
-                                                    width: 24, height: 24, borderRadius: '50%',
-                                                    background: isActive ? statusConfig[s].color : 'var(--border)',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    transition: 'all 0.3s',
-                                                    boxShadow: isCurrent ? `0 0 0 3px ${statusConfig[s].bg}` : 'none',
-                                                }}>
-                                                    {isActive && <Icon name="checkCircle" size={12} style={{ color: '#fff' }} />}
+                                            <div key={s} style={{ display: 'flex', alignItems: 'center', flex: 1, ...(i === statusOrder.length - 1 ? { flex: '0 0 auto' } : {}) }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                    <div style={{
+                                                        width: 24, height: 24, borderRadius: '50%',
+                                                        background: isActive ? statusConfig[s].color : 'var(--border)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        transition: 'all 0.3s', flexShrink: 0,
+                                                        boxShadow: isCurrent ? `0 0 0 3px ${statusConfig[s].bg}` : 'none',
+                                                    }}>
+                                                        {isActive && <Icon name="checkCircle" size={12} style={{ color: '#fff' }} />}
+                                                    </div>
+                                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem', whiteSpace: 'nowrap' }}>
+                                                        {statusConfig[s].label}
+                                                    </span>
                                                 </div>
                                                 {i < statusOrder.length - 1 && (
                                                     <div style={{
-                                                        flex: 1, height: 2, marginLeft: 4,
+                                                        flex: 1, height: 2, marginLeft: 4, marginRight: 4,
+                                                        alignSelf: 'flex-start', marginTop: 11,
                                                         background: isActive && i < currentIdx ? statusConfig[statusOrder[i + 1]].color : 'var(--border)',
                                                         transition: 'all 0.3s',
                                                     }} />
@@ -108,9 +114,6 @@ export default function MyApplications() {
                                             </div>
                                         );
                                     })}
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                    {statusOrder.map(s => <span key={s}>{statusConfig[s].label}</span>)}
                                 </div>
 
                                 {isRejected && (
