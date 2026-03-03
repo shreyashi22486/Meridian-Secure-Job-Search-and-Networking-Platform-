@@ -884,9 +884,7 @@ export default function Profile() {
                                         To see who viewed your profile, you must first enable "Show me in viewers lists" above.
                                     </p>
                                 </div>
-                            ) : viewers.recent_viewers.length === 0 ? (
-                                <p className="text-muted">No profile views yet.</p>
-                            ) : (
+                            ) : viewers.recent_viewers.length > 0 && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {viewers.recent_viewers.map(v => (
                                         <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0' }}>
