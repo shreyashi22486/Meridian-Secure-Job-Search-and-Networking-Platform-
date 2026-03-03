@@ -120,11 +120,14 @@ export default function Jobs() {
                         <option value="internship">Internship</option>
                         <option value="contract">Contract</option>
                     </select>
-                    <input
-                        type="number" placeholder="Min Salary"
-                        value={minSalary} onChange={(e) => setMinSalary(e.target.value)}
-                        className="role-select" style={{ padding: '0.5rem 0.75rem', width: '130px' }}
-                    />
+                    <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>₹</span>
+                        <input
+                            type="number" placeholder="Min LPA"
+                            value={minSalary} onChange={(e) => setMinSalary(e.target.value)}
+                            className="role-select" style={{ padding: '0.5rem 0.75rem 0.5rem 1.4rem', width: '130px' }}
+                        />
+                    </div>
                     {(keyword || location || workType || jobType || minSalary) && (
                         <button type="button" onClick={clearFilters} className="btn btn-ghost btn-xs">
                             <Icon name="x" size={12} /> Clear
@@ -186,12 +189,12 @@ export default function Jobs() {
                                 )}
 
                                 {job.required_skills?.length > 0 && (
-                                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                    <div className="skill-tags">
                                         {job.required_skills.slice(0, 4).map((s, i) => (
-                                            <span key={i} style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'var(--primary-subtle)', color: 'var(--primary)' }}>{s}</span>
+                                            <span key={i} className="skill-tag" style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}>{s}</span>
                                         ))}
                                         {job.required_skills.length > 4 && (
-                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>+{job.required_skills.length - 4}</span>
+                                            <span className="text-muted" style={{ fontSize: '0.72rem' }}>+{job.required_skills.length - 4} more</span>
                                         )}
                                     </div>
                                 )}

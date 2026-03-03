@@ -167,16 +167,40 @@ export default function JobDetail() {
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label>Min Salary (₹)</label>
-                                    <input type="number" value={editForm.salary_min || ''} onChange={(e) => setEditForm({ ...editForm, salary_min: e.target.value })} />
+                                    <label>Min Salary (Lakhs LPA)</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>₹</span>
+                                        <input
+                                            type="number" step="0.1"
+                                            style={{ paddingLeft: '1.75rem' }}
+                                            value={editForm.salary_min ? (editForm.salary_min / 100000).toFixed(1) : ''}
+                                            onChange={(e) => setEditForm({ ...editForm, salary_min: e.target.value ? Math.round(parseFloat(e.target.value) * 100000) : null })}
+                                        />
+                                    </div>
                                 </div>
                                 <div className="form-group">
-                                    <label>Max Salary (₹)</label>
-                                    <input type="number" value={editForm.salary_max || ''} onChange={(e) => setEditForm({ ...editForm, salary_max: e.target.value })} />
+                                    <label>Max Salary (Lakhs LPA)</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>₹</span>
+                                        <input
+                                            type="number" step="0.1"
+                                            style={{ paddingLeft: '1.75rem' }}
+                                            value={editForm.salary_max ? (editForm.salary_max / 100000).toFixed(1) : ''}
+                                            onChange={(e) => setEditForm({ ...editForm, salary_max: e.target.value ? Math.round(parseFloat(e.target.value) * 100000) : null })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label>Application Deadline</label>
+                                    <input
+                                        type="date"
+                                        value={editForm.application_deadline ? editForm.application_deadline.substring(0, 10) : ''}
+                                        onChange={(e) => setEditForm({ ...editForm, application_deadline: e.target.value })}
+                                    />
                                 </div>
                                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
                                     <label>Required Skills (comma-separated)</label>
-                                    <input type="text" value={editForm.required_skills || ''} onChange={(e) => setEditForm({ ...editForm, required_skills: e.target.value })} />
+                                    <input type="text" value={editForm.required_skills || ''} onChange={(e) => setEditForm({ ...editForm, required_skills: e.target.value })} placeholder="e.g. Python, React, SQL" />
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
@@ -219,13 +243,9 @@ export default function JobDetail() {
                             {job.required_skills?.length > 0 && (
                                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', marginTop: '1.25rem' }}>
                                     <h2 style={{ marginBottom: '0.75rem' }}>Required Skills</h2>
-                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <div className="skill-tags">
                                         {job.required_skills.map((skill, i) => (
-                                            <span key={i} style={{
-                                                padding: '0.35rem 0.75rem', borderRadius: '20px',
-                                                background: 'var(--primary-subtle)', color: 'var(--primary)',
-                                                fontSize: '0.82rem', fontWeight: 500,
-                                            }}>{skill}</span>
+                                            <span key={i} className="skill-tag">{skill}</span>
                                         ))}
                                     </div>
                                 </div>
