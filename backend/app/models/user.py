@@ -12,7 +12,7 @@ import uuid
 import enum
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Boolean, Integer, DateTime, Enum, Text
+    Column, String, Boolean, Integer, DateTime, Enum, Text, JSON
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -66,6 +66,20 @@ class User(Base):
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
+
+    # ─── Privacy ──────────────────────────────────────────────────────
+    # Per-field visibility: "public" | "connections_only" | "private"
+    privacy_settings = Column(JSON, nullable=False, default=lambda: {
+        "headline": "public",
+        "location": "public",
+        "bio": "public",
+        "education": "public",
+        "experience": "connections_only",
+        "skills": "public",
+        "email": "connections_only",
+    })
+    # Whether this user appears in others' "Recent Viewers" lists
+    show_profile_views = Column(Boolean, default=True, nullable=False)
 
     # Relationships
     resumes = relationship("Resume", back_populates="owner", cascade="all, delete-orphan")

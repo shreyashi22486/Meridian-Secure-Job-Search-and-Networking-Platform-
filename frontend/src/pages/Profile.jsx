@@ -603,6 +603,12 @@ export default function Profile() {
     const [experience, setExperience] = useState([]);
     const [skills, setSkills] = useState([]);
 
+    // Privacy state
+    const [privacySettings, setPrivacySettings] = useState(null);
+    const [showProfileViews, setShowProfileViews] = useState(true);
+    const [viewers, setViewers] = useState(null);
+    const [privacySaving, setPrivacySaving] = useState(false);
+
     useEffect(() => {
         if (user) {
             setFormData({
@@ -616,6 +622,19 @@ export default function Profile() {
             setSkills(user.skills || []);
         }
     }, [user]);
+
+    // Load privacy settings and viewers when Privacy tab is selected
+    useEffect(() => {
+        if (activeTab === 'privacy' && !privacySettings) {
+            userApi.getPrivacy().then(({ data }) => {
+                setPrivacySettings(data.privacy_settings);
+                setShowProfileViews(data.show_profile_views);
+            }).catch(() => { });
+            userApi.getViewers().then(({ data }) => {
+                setViewers(data);
+            }).catch(() => { });
+        }
+    }, [activeTab]);
 
     const saveProfile = async () => {
         setSaving(true);
@@ -667,6 +686,23 @@ export default function Profile() {
         }
     };
 
+    const savePrivacy = async () => {
+        setPrivacySaving(true);
+        try {
+            const { data } = await userApi.updatePrivacy({
+                privacy_settings: privacySettings,
+                show_profile_views: showProfileViews,
+            });
+            setPrivacySettings(data.privacy_settings);
+            setShowProfileViews(data.show_profile_views);
+            toast.success('Privacy settings saved!');
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Failed to save privacy');
+        } finally {
+            setPrivacySaving(false);
+        }
+    };
+
     return (
         <div className="page">
             <div className="page-header">
@@ -675,13 +711,16 @@ export default function Profile() {
             </div>
 
             <div className="tabs">
-                {['profile', 'password', 'security'].map((tab) => (
+                {['profile', 'privacy', 'password', 'security'].map((tab) => (
                     <button
                         key={tab}
                         className={`tab ${activeTab === tab ? 'tab-active' : ''}`}
                         onClick={() => setActiveTab(tab)}
                     >
-                        {tab === 'profile' ? <><Icon name="user" size={15} /> Profile</> : tab === 'password' ? <><Icon name="key" size={15} /> Password</> : <><Icon name="shield" size={15} /> Security</>}
+                        {tab === 'profile' ? <><Icon name="user" size={15} /> Profile</>
+                            : tab === 'privacy' ? <><Icon name="eye" size={15} /> Privacy</>
+                                : tab === 'password' ? <><Icon name="key" size={15} /> Password</>
+                                    : <><Icon name="shield" size={15} /> Security</>}
                     </button>
                 ))}
             </div>
@@ -738,6 +777,116 @@ export default function Profile() {
                     )}
                     <button type="submit" className="btn btn-primary">Change Password</button>
                 </form>
+            )}
+
+            {activeTab === 'privacy' && (
+                <div className="profile-sections">
+                    {/* Field-level Privacy */}
+                    <div className="glass-card form-card">
+                        <h3><Icon name="eye" size={16} /> Field Visibility</h3>
+                        <p className="text-muted" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>Control who can see each section of your profile.</p>
+                        {privacySettings ? (
+                            <>
+                                {[
+                                    { key: 'headline', label: 'Headline', icon: 'edit' },
+                                    { key: 'location', label: 'Location', icon: 'mapPin' },
+                                    { key: 'bio', label: 'Bio', icon: 'fileText' },
+                                    { key: 'email', label: 'Email Address', icon: 'mail' },
+                                    { key: 'education', label: 'Education', icon: 'graduationCap' },
+                                    { key: 'experience', label: 'Experience', icon: 'briefcase' },
+                                    { key: 'skills', label: 'Skills', icon: 'zap' },
+                                ].map(({ key, label, icon }) => (
+                                    <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Icon name={icon} size={15} />
+                                            <span style={{ fontWeight: 500 }}>{label}</span>
+                                        </div>
+                                        <select
+                                            value={privacySettings[key] || 'public'}
+                                            onChange={e => setPrivacySettings(prev => ({ ...prev, [key]: e.target.value }))}
+                                            style={{ width: 170, padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                                        >
+                                            <option value="public">🌐 Public</option>
+                                            <option value="connections_only">🔗 Connections Only</option>
+                                            <option value="private">🔒 Private</option>
+                                        </select>
+                                    </div>
+                                ))}
+                                <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={savePrivacy} disabled={privacySaving}>
+                                    {privacySaving ? 'Saving…' : '✓ Save Privacy Settings'}
+                                </button>
+                            </>
+                        ) : (
+                            <div className="spinner" />
+                        )}
+                    </div>
+
+                    {/* Profile Viewers Toggle */}
+                    <div className="glass-card form-card">
+                        <h3><Icon name="users" size={16} /> Profile Viewers</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
+                            <div>
+                                <div style={{ fontWeight: 500 }}>Show me in viewers lists</div>
+                                <div className="text-muted" style={{ fontSize: '0.82rem' }}>When you view someone's profile, they can see you visited</div>
+                            </div>
+                            <label style={{ position: 'relative', display: 'inline-block', width: 48, height: 26, cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={showProfileViews}
+                                    onChange={e => { setShowProfileViews(e.target.checked); }}
+                                    style={{ opacity: 0, width: 0, height: 0 }}
+                                />
+                                <span style={{
+                                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                                    borderRadius: 26, transition: 'background 0.3s',
+                                    background: showProfileViews ? 'var(--primary)' : 'var(--border)',
+                                }}>
+                                    <span style={{
+                                        position: 'absolute', top: 3, left: showProfileViews ? 25 : 3,
+                                        width: 20, height: 20, borderRadius: '50%',
+                                        background: '#fff', transition: 'left 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                                    }} />
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Viewer Analytics */}
+                    {viewers && (
+                        <div className="glass-card form-card">
+                            <h3><Icon name="eye" size={16} /> Who Viewed Your Profile</h3>
+                            <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.5rem' }}>
+                                {viewers.total_views}
+                                <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.5rem' }}>total views</span>
+                            </div>
+                            {viewers.recent_viewers.length === 0 ? (
+                                <p className="text-muted">No profile views yet.</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {viewers.recent_viewers.map(v => (
+                                        <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0' }}>
+                                            <div style={{
+                                                width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                                                background: 'linear-gradient(135deg, var(--primary), var(--accent))',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                color: '#fff', fontWeight: 600, fontSize: '0.82rem',
+                                            }}>
+                                                {v.full_name?.charAt(0)?.toUpperCase() || '?'}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 500, color: 'var(--text-heading)', fontSize: '0.88rem' }}>{v.full_name}</div>
+                                                {v.headline && <div className="text-muted" style={{ fontSize: '0.78rem' }}>{v.headline}</div>}
+                                            </div>
+                                            <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                                {new Date(v.viewed_at).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
 
             {activeTab === 'security' && (

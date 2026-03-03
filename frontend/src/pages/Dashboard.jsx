@@ -68,14 +68,49 @@ export default function Dashboard() {
 
             {/* Quick Actions */}
             <div className="dash-actions">
-                <Link to="/profile" className="action-card glass-card">
-                    <div className="action-icon"><Icon name="user" size={22} /></div>
+                <Link to="/jobs" className="action-card glass-card">
+                    <div className="action-icon"><Icon name="briefcase" size={22} /></div>
                     <div>
-                        <h3>Edit Profile</h3>
-                        <p>Update your info, photo & skills</p>
+                        <h3>{user?.role?.toLowerCase() === 'recruiter' ? 'Manage Jobs' : 'Browse Jobs'}</h3>
+                        <p>{user?.role?.toLowerCase() === 'recruiter' ? 'Post and manage job listings' : 'Find your next opportunity'}</p>
                     </div>
                     <Icon name="chevronRight" size={18} className="action-arrow" />
                 </Link>
+                <Link to="/applications" className="action-card glass-card">
+                    <div className="action-icon"><Icon name="fileText" size={22} /></div>
+                    <div>
+                        <h3>My Applications</h3>
+                        <p>Track your application status</p>
+                    </div>
+                    <Icon name="chevronRight" size={18} className="action-arrow" />
+                </Link>
+                <Link to="/messages" className="action-card glass-card">
+                    <div className="action-icon"><Icon name="mail" size={22} /></div>
+                    <div>
+                        <h3>Messages</h3>
+                        <p>Encrypted conversations</p>
+                    </div>
+                    <Icon name="chevronRight" size={18} className="action-arrow" />
+                </Link>
+                {user?.role?.toLowerCase() === 'recruiter' || user?.role?.toLowerCase() === 'admin' ? (
+                    <Link to="/companies" className="action-card glass-card">
+                        <div className="action-icon"><Icon name="building" size={22} /></div>
+                        <div>
+                            <h3>Companies</h3>
+                            <p>Manage company pages</p>
+                        </div>
+                        <Icon name="chevronRight" size={18} className="action-arrow" />
+                    </Link>
+                ) : (
+                    <Link to="/profile" className="action-card glass-card">
+                        <div className="action-icon"><Icon name="user" size={22} /></div>
+                        <div>
+                            <h3>Edit Profile</h3>
+                            <p>Update your info & skills</p>
+                        </div>
+                        <Icon name="chevronRight" size={18} className="action-arrow" />
+                    </Link>
+                )}
                 <Link to="/resumes" className="action-card glass-card">
                     <div className="action-icon"><Icon name="fileText" size={22} /></div>
                     <div>

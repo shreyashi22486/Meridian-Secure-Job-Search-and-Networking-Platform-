@@ -93,6 +93,23 @@ export const userApi = {
     // Skills
     addSkill: (data) => api.post('/users/me/skills', data),
     deleteSkill: (id) => api.delete(`/users/me/skills/${id}`),
+
+    // Privacy
+    getPrivacy: () => api.get('/users/me/privacy'),
+    updatePrivacy: (data) => api.put('/users/me/privacy', data),
+
+    // Profile viewers
+    getViewers: () => api.get('/users/me/viewers'),
+
+    // Other user's avatar as blob URL
+    getUserAvatarBlob: async (userId) => {
+        try {
+            const resp = await api.get(`/users/${userId}/avatar`, { responseType: 'blob' });
+            return URL.createObjectURL(resp.data);
+        } catch {
+            return null;
+        }
+    },
 };
 
 // ─── Resumes ──────────────────────────────────────────────────────────────
@@ -118,6 +135,39 @@ export const adminApi = {
     suspend: (userId) => api.put(`/admin/users/${userId}/suspend`),
     deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
     auditLogs: (params) => api.get('/admin/audit-logs', { params }),
+};
+
+// ─── Companies ────────────────────────────────────────────────────────────
+
+export const companyApi = {
+    create: (data) => api.post('/companies/', data),
+    list: (params) => api.get('/companies/', { params }),
+    get: (id) => api.get(`/companies/${id}`),
+    update: (id, data) => api.put(`/companies/${id}`, data),
+    remove: (id) => api.delete(`/companies/${id}`),
+    addAdmin: (companyId, data) => api.post(`/companies/${companyId}/admins`, data),
+    removeAdmin: (companyId, userId) => api.delete(`/companies/${companyId}/admins/${userId}`),
+};
+
+// ─── Jobs ─────────────────────────────────────────────────────────────────
+
+export const jobApi = {
+    create: (data) => api.post('/jobs/', data),
+    search: (params) => api.get('/jobs/', { params }),
+    get: (id) => api.get(`/jobs/${id}`),
+    update: (id, data) => api.put(`/jobs/${id}`, data),
+    remove: (id) => api.delete(`/jobs/${id}`),
+};
+
+// ─── Applications ─────────────────────────────────────────────────────
+
+export const applicationApi = {
+    apply: (data) => api.post('/applications/', data),
+    myApplications: () => api.get('/applications/me'),
+    withdraw: (id) => api.delete(`/applications/${id}`),
+    listApplicants: (jobId) => api.get(`/applications/job/${jobId}`),
+    updateStatus: (id, status) => api.put(`/applications/${id}/status`, { status }),
+    updateNotes: (id, notes) => api.put(`/applications/${id}/notes`, { notes }),
 };
 
 export default api;

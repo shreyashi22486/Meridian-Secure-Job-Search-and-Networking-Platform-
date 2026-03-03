@@ -15,7 +15,7 @@ from app.database import engine, Base
 from app.security.headers import SecurityHeadersMiddleware
 from app.security.csrf import CSRFMiddleware
 from app.security.rate_limiter import RateLimitMiddleware
-from app.routers import auth, users, resumes, admin
+from app.routers import auth, users, resumes, admin, companies, jobs, applications, messaging, connections
 from app.routers import profile as profile_router
 
 
@@ -69,6 +69,11 @@ app.include_router(users.router)
 app.include_router(profile_router.router)
 app.include_router(resumes.router)
 app.include_router(admin.router)
+app.include_router(companies.router)
+app.include_router(jobs.router)
+app.include_router(applications.router)
+app.include_router(messaging.router)
+app.include_router(connections.router)
 
 
 # ─── HEALTH CHECK ────────────────────────────────────────────────────────

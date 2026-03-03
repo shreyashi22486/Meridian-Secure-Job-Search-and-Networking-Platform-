@@ -170,9 +170,9 @@ async def get_my_avatar(
 async def get_user_avatar(
     user_id: str,
     db: DBSession = Depends(get_db),
-    current_user: User = Depends(require_recruiter_or_admin),
+    current_user: User = Depends(get_current_user),
 ):
-    """Serve another user's avatar. Restricted to recruiters and admins."""
+    """Serve another user's avatar. Available to all authenticated users."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
