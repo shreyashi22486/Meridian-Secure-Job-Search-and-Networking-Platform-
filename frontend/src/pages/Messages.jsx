@@ -24,6 +24,9 @@ export default function Messages() {
     const [showNew, setShowNew] = useState(false);
     const [searchUser, setSearchUser] = useState('');
     const [searchResults, setSearchResults] = useState([]);
+    const [chatMode, setChatMode] = useState('direct'); // 'direct' | 'group'
+    const [selectedMembers, setSelectedMembers] = useState([]);
+    const [groupName, setGroupName] = useState('');
 
     const messagesEndRef = useRef(null);
     const pollRef = useRef(null);
@@ -142,6 +145,17 @@ export default function Messages() {
     };
 
     const handleStartConversation = async (targetUserId) => {
+        if (chatMode === 'group') {
+            // In group mode, add user to selected members
+            const userObj = searchResults.find(u => u.id === targetUserId);
+            if (userObj && !selectedMembers.some(m => m.id === targetUserId)) {
+                setSelectedMembers(prev => [...prev, userObj]);
+            }
+            setSearchUser('');
+            setSearchResults([]);
+            return;
+        }
+        // Direct mode — start 1:1 conversation
         try {
             const { data } = await api.post('/messages/conversations/direct', {
                 target_user_id: targetUserId,
@@ -158,6 +172,31 @@ export default function Messages() {
         } catch (err) {
             setError(err.response?.data?.detail || 'Failed to start conversation');
         }
+    };
+
+    const handleCreateGroup = async () => {
+        if (selectedMembers.length < 1) return;
+        const name = groupName.trim() || selectedMembers.map(m => m.full_name || m.email).join(', ');
+        try {
+            const { data } = await api.post('/messages/conversations/group', {
+                name,
+                member_ids: selectedMembers.map(m => m.id),
+            });
+            setConversations(prev => [data, ...prev]);
+            setActiveConv(data);
+            setShowNew(false);
+            setSearchUser('');
+            setSearchResults([]);
+            setSelectedMembers([]);
+            setGroupName('');
+            setChatMode('direct');
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Failed to create group');
+        }
+    };
+
+    const handleRemoveMember = (id) => {
+        setSelectedMembers(prev => prev.filter(m => m.id !== id));
     };
 
     const handleSearchUsers = async (query) => {
@@ -197,25 +236,92 @@ export default function Messages() {
 
                     {showNew && (
                         <div style={{ padding: '0.75rem', borderBottom: '1px solid var(--border)' }}>
+                            {/* Mode toggle */}
+                            <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.5rem', background: 'var(--input-bg)', borderRadius: 'var(--radius-xs)', padding: '0.2rem' }}>
+                                <button
+                                    onClick={() => { setChatMode('direct'); setSelectedMembers([]); setGroupName(''); }}
+                                    style={{
+                                        flex: 1, padding: '0.35rem', border: 'none', borderRadius: 'var(--radius-xs)', cursor: 'pointer',
+                                        fontSize: '0.78rem', fontWeight: 600, transition: 'all 0.2s',
+                                        background: chatMode === 'direct' ? 'var(--primary)' : 'transparent',
+                                        color: chatMode === 'direct' ? '#fff' : 'var(--text-muted)',
+                                    }}
+                                >
+                                    <Icon name="mail" size={11} /> Direct
+                                </button>
+                                <button
+                                    onClick={() => setChatMode('group')}
+                                    style={{
+                                        flex: 1, padding: '0.35rem', border: 'none', borderRadius: 'var(--radius-xs)', cursor: 'pointer',
+                                        fontSize: '0.78rem', fontWeight: 600, transition: 'all 0.2s',
+                                        background: chatMode === 'group' ? 'var(--primary)' : 'transparent',
+                                        color: chatMode === 'group' ? '#fff' : 'var(--text-muted)',
+                                    }}
+                                >
+                                    <Icon name="users" size={11} /> Group
+                                </button>
+                            </div>
+
+                            {/* Group name input */}
+                            {chatMode === 'group' && (
+                                <input
+                                    type="text" placeholder="Group name (optional)"
+                                    value={groupName} onChange={(e) => setGroupName(e.target.value)}
+                                    style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xs)', color: 'var(--text)', fontSize: '0.85rem', marginBottom: '0.5rem' }}
+                                />
+                            )}
+
+                            {/* Selected members chips */}
+                            {chatMode === 'group' && selectedMembers.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.5rem' }}>
+                                    {selectedMembers.map(m => (
+                                        <span key={m.id} style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                                            padding: '0.2rem 0.5rem', borderRadius: '12px',
+                                            background: 'var(--primary-subtle)', color: 'var(--primary)',
+                                            fontSize: '0.75rem', fontWeight: 500,
+                                        }}>
+                                            {m.full_name || m.email}
+                                            <span
+                                                onClick={() => handleRemoveMember(m.id)}
+                                                style={{ cursor: 'pointer', marginLeft: '0.15rem', fontWeight: 700, fontSize: '0.85rem', lineHeight: 1 }}
+                                            >×</span>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* User search */}
                             <input
                                 type="text" placeholder="Search users..."
                                 value={searchUser} onChange={(e) => handleSearchUsers(e.target.value)}
                                 style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xs)', color: 'var(--text)', fontSize: '0.85rem' }}
                             />
                             {searchResults.length > 0 && (
-                                <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
-                                    {searchResults.map(u => (
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', maxHeight: '150px', overflowY: 'auto' }}>
+                                    {searchResults.filter(u => !selectedMembers.some(m => m.id === u.id)).map(u => (
                                         <div
                                             key={u.id}
                                             onClick={() => handleStartConversation(u.id)}
                                             style={{ padding: '0.4rem 0.5rem', cursor: 'pointer', borderRadius: 'var(--radius-xs)', transition: 'background 0.2s' }}
-                                            onMouseEnter={(e) => e.target.style.background = 'var(--primary-subtle)'}
-                                            onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--primary-subtle)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                         >
                                             {u.full_name || u.email}
                                         </div>
                                     ))}
                                 </div>
+                            )}
+
+                            {/* Create group button */}
+                            {chatMode === 'group' && selectedMembers.length > 0 && (
+                                <button
+                                    onClick={handleCreateGroup}
+                                    className="btn btn-primary btn-sm btn-full"
+                                    style={{ marginTop: '0.5rem' }}
+                                >
+                                    <Icon name="users" size={13} /> Create Group ({selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''})
+                                </button>
                             )}
                         </div>
                     )}
