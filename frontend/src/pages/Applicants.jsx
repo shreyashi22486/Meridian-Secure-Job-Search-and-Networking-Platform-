@@ -146,11 +146,16 @@ export default function Applicants() {
                                                     <span className="text-muted" style={{ fontSize: '0.8rem' }}>None</span>
                                                 )}
                                             </td>
-                                            <td>
-                                                <NotesEditor
-                                                    value={app.recruiter_notes || ''}
-                                                    onSave={(notes) => handleNotesUpdate(app.id, notes)}
-                                                />
+                                            <td style={{ minWidth: '180px' }}>
+                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                    <Link to={`/messages?user=${app.user_id}`} className="btn btn-primary btn-xs">
+                                                        <Icon name="mail" size={12} /> Message
+                                                    </Link>
+                                                    <NotesEditor
+                                                        value={app.recruiter_notes || ''}
+                                                        onSave={(notes) => handleNotesUpdate(app.id, notes)}
+                                                    />
+                                                </div>
                                             </td>
                                         </tr>
                                     );
