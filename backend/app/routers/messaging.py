@@ -22,6 +22,7 @@ from app.models.user import User
 from app.models.messaging import (
     Conversation, ConversationMember, ConversationType, Message,
 )
+from app.config import settings
 from app.dependencies import get_current_user
 from app.utils import get_client_ip, log_audit
 from app.security.sanitizer import sanitize_string
@@ -29,8 +30,7 @@ from app.security.sanitizer import sanitize_string
 router = APIRouter(prefix="/api/messages", tags=["Messaging"])
 
 # Fernet key for server-side encryption of group messages
-_FERNET_KEY = os.getenv("FERNET_KEY", Fernet.generate_key().decode())
-_fernet = Fernet(_FERNET_KEY.encode() if isinstance(_FERNET_KEY, str) else _FERNET_KEY)
+_fernet = Fernet(settings.FERNET_KEY.encode())
 
 
 # ─── Schemas ────────────────────────────────────────────────────────────

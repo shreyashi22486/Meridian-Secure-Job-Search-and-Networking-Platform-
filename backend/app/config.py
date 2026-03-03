@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # Encryption keys (Fernet)
     TOTP_ENCRYPTION_KEY: str  # For encrypting TOTP secrets at rest
     FILE_ENCRYPTION_KEY: str  # For encrypting uploaded resumes at rest
+    FERNET_KEY: str          # For encrypting group messages at rest
 
     # File uploads
     UPLOAD_DIR: str = "./data/resumes"
