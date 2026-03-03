@@ -51,7 +51,7 @@ export default function JobDetail() {
         setShowApply(true);
         try {
             const { data } = await resumeApi.list();
-            setResumes(data || []);
+            setResumes(data.resumes || []);
         } catch { /* ignore */ }
     };
 
@@ -180,7 +180,7 @@ export default function JobDetail() {
                                 <select value={applyForm.resume_id} onChange={(e) => setApplyForm({ ...applyForm, resume_id: e.target.value })}>
                                     <option value="">No resume</option>
                                     {resumes.map(r => (
-                                        <option key={r.id} value={r.id}>{r.filename || 'Resume'}</option>
+                                        <option key={r.id} value={r.id}>{r.original_filename || 'Resume'}</option>
                                     ))}
                                 </select>
                             </div>
