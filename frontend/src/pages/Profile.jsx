@@ -911,6 +911,11 @@ export default function Profile() {
                             )}
                         </div>
                     )}
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1.5rem" }}>
+                        <button className="btn btn-primary" onClick={savePrivacy} disabled={privacySaving}>
+                            {privacySaving ? "Saving…" : "✓ Save All Privacy Settings"}
+                        </button>
+                    </div>
                 </div>
             )}
 
