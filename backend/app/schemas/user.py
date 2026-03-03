@@ -97,6 +97,7 @@ class ProfileViewerItem(BaseModel):
 class ViewersResponse(BaseModel):
     total_views: int
     recent_viewers: List[ProfileViewerItem]
+    is_enabled: bool
 
 
 class PublicUserProfile(BaseModel):

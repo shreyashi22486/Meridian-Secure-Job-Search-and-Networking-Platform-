@@ -695,6 +695,11 @@ export default function Profile() {
             });
             setPrivacySettings(data.privacy_settings);
             setShowProfileViews(data.show_profile_views);
+
+            // Refresh viewers list to reflect new privacy state
+            const viewersRes = await userApi.getViewers();
+            setViewers(viewersRes.data);
+
             toast.success('Privacy settings saved!');
         } catch (err) {
             toast.error(err.response?.data?.detail || 'Failed to save privacy');
@@ -822,9 +827,6 @@ export default function Profile() {
                                         </select>
                                     </div>
                                 ))}
-                                <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={savePrivacy} disabled={privacySaving}>
-                                    {privacySaving ? 'Saving…' : '✓ Save Privacy Settings'}
-                                </button>
                             </>
                         ) : (
                             <div className="spinner" />
@@ -869,7 +871,20 @@ export default function Profile() {
                                 {viewers.total_views}
                                 <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.5rem' }}>total views</span>
                             </div>
-                            {viewers.recent_viewers.length === 0 ? (
+
+                            {!viewers.is_enabled ? (
+                                <div style={{
+                                    padding: '1.5rem', background: 'rgba(255,255,255,0.03)',
+                                    borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border)',
+                                    textAlign: 'center'
+                                }}>
+                                    <Icon name="eyeOff" size={24} style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }} />
+                                    <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>Recent Viewers Hidden</div>
+                                    <p className="text-muted" style={{ fontSize: '0.82rem' }}>
+                                        To see who viewed your profile, you must first enable "Show me in viewers lists" above.
+                                    </p>
+                                </div>
+                            ) : viewers.recent_viewers.length === 0 ? (
                                 <p className="text-muted">No profile views yet.</p>
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

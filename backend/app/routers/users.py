@@ -254,10 +254,18 @@ async def get_my_viewers(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get profile view count and recent viewers."""
+    """
+    Get profile view count and recent viewers.
+    Privacy rule: If you opt-out of appearing in others' recent viewers,
+    you cannot see your own recent viewers list.
+    """
     total = db.query(func.count(ProfileView.id)).filter(
         ProfileView.viewed_user_id == current_user.id,
     ).scalar()
+
+    # If user opted out, they can't see "who" viewed them
+    if not current_user.show_profile_views:
+        return ViewersResponse(total_views=total or 0, recent_viewers=[], is_enabled=False)
 
     recent = db.query(ProfileView).filter(
         ProfileView.viewed_user_id == current_user.id,
@@ -272,7 +280,7 @@ async def get_my_viewers(
         viewer = pv.viewer
         if not viewer:
             continue
-        # Respect viewer's opt-out
+        # Respect individual viewer's opt-out
         if not viewer.show_profile_views:
             continue
         viewers.append(ProfileViewerItem(
@@ -283,7 +291,7 @@ async def get_my_viewers(
             viewed_at=pv.viewed_at,
         ))
 
-    return ViewersResponse(total_views=total or 0, recent_viewers=viewers)
+    return ViewersResponse(total_views=total or 0, recent_viewers=viewers, is_enabled=True)
 
 
 # ─── Password ──────────────────────────────────────────────────────────
