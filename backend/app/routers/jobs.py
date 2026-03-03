@@ -8,10 +8,10 @@ Security features:
 - Input sanitization via Pydantic schemas
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import or_
-from typing import Optional, List
+from typing import Optional
 
 from app.database import get_db
 from app.models.user import User
@@ -164,7 +164,6 @@ async def search_jobs(
         skill_list = [s.strip().lower() for s in skills.split(",") if s.strip()]
         for skill in skill_list:
             # Use JSONB containment operator — checks if the array contains the skill
-            from sqlalchemy import text
             query = query.filter(
                 Job.required_skills.op("@>")(f'["{skill}"]')
             )

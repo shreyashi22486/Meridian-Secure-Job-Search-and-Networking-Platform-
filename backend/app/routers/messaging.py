@@ -10,7 +10,7 @@ Security design:
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
-from sqlalchemy import and_, func
+from sqlalchemy import func
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime

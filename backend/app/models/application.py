@@ -8,7 +8,7 @@ import uuid
 import enum
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Text, DateTime, Enum, ForeignKey, UniqueConstraint
+    Column, Text, DateTime, Enum, ForeignKey, UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
