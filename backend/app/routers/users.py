@@ -12,7 +12,7 @@ Endpoints:
 - GET  /{id}: view another user's profile (privacy-filtered)
 """
 
-from datetime import date, datetime
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import or_, and_, func
@@ -23,7 +23,7 @@ from app.models.connection import Connection, ConnectionStatus
 from app.models.profile_view import ProfileView
 from app.schemas.user import (
     UserProfile, UpdateProfileRequest,
-    PrivacyResponse, UpdatePrivacyRequest, PrivacySettings,
+    PrivacyResponse, UpdatePrivacyRequest,
     ProfileViewerItem, ViewersResponse, PublicUserProfile,
 )
 from app.schemas.profile import EducationItem, ExperienceItem, SkillItem
@@ -33,7 +33,7 @@ from app.security.password import (
     PasswordValidationError,
 )
 from app.security.totp import verify_totp
-from app.dependencies import get_current_user, require_recruiter_or_admin
+from app.dependencies import get_current_user
 from app.utils import get_client_ip, log_audit
 
 router = APIRouter(prefix="/api/users", tags=["Users"])

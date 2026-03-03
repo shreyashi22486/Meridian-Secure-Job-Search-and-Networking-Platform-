@@ -38,7 +38,7 @@ from app.schemas.profile import (
     ExperienceItem, CreateExperience, UpdateExperience,
     SkillItem, CreateSkill,
 )
-from app.dependencies import get_current_user, require_recruiter_or_admin
+from app.dependencies import get_current_user
 from app.utils import get_client_ip, log_audit
 
 router = APIRouter(prefix="/api/users", tags=["Profile"])
