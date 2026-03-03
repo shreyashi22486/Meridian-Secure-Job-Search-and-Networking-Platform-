@@ -15,7 +15,6 @@ from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
 from cryptography.fernet import Fernet
-import os
 
 from app.database import get_db
 from app.models.user import User
