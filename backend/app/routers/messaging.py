@@ -348,7 +348,12 @@ async def send_message(
     db.commit()
     db.refresh(msg)
 
-    return _msg_response(msg)
+    resp = _msg_response(msg)
+    # For group messages, return the plaintext in the response so UI doesn't show ciphertext
+    if conv.type != ConversationType.DIRECT:
+        resp.encrypted_content = data.encrypted_content
+    
+    return resp
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=MessageListResponse)

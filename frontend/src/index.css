@@ -413,6 +413,12 @@ a:hover {
   opacity: 0.5;
 }
 
+/* Dark-theme select options (browser dropdown menu) */
+select option {
+  background: var(--bg-surface);
+  color: var(--text);
+}
+
 /* Password visibility toggle */
 .password-input-wrapper {
   position: relative;
