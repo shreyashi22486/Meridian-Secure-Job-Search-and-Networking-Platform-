@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { applicationApi, resumeApi } from '../api/client';
 import Icon from '../components/Icons';
+import VirtualKeyboard from '../components/VirtualKeyboard';
+import { useAuth } from '../context/AuthContext';
 
 const statusConfig = {
     applied: { label: 'Applied', color: 'var(--primary)', bg: 'var(--primary-subtle)' },
@@ -12,10 +14,12 @@ const statusConfig = {
 };
 
 export default function Applicants() {
+    const { user } = useAuth();
     const { jobId } = useParams();
     const [applicants, setApplicants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [otpResumeId, setOtpResumeId] = useState(null);  // for OTP download flow
 
     useEffect(() => {
         const fetch = async () => {
@@ -53,9 +57,18 @@ export default function Applicants() {
         }
     };
 
-    const handleDownloadResume = async (resumeId) => {
+    const handleDownloadResume = (resumeId) => {
+        if (!user?.is_totp_enabled) {
+            setError('You must enable Two-Factor Authentication in your Profile before downloading resumes');
+            return;
+        }
+        // Show VirtualKeyboard for OTP before downloading
+        setOtpResumeId(resumeId);
+    };
+
+    const doDownloadResume = async (resumeId, otpCode) => {
         try {
-            const resp = await resumeApi.download(resumeId);
+            const resp = await resumeApi.download(resumeId, otpCode);
             const url = window.URL.createObjectURL(new Blob([resp.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -64,14 +77,21 @@ export default function Applicants() {
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
-        } catch {
-            setError('Failed to download resume');
+        } catch (err) {
+            const detail = err.response?.data;
+            if (detail instanceof Blob) {
+                const text = await detail.text();
+                try { setError(JSON.parse(text).detail); } catch { setError('Failed to download resume'); }
+            } else {
+                setError(detail?.detail || 'Failed to download resume');
+            }
         }
     };
 
     if (loading) return <div className="page"><div className="empty-state"><div className="spinner" /></div></div>;
 
     return (
+        <>
         <div className="page">
             <div style={{ marginBottom: '1rem' }}>
                 <Link to={`/jobs/${jobId}`} style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>← Back to Job</Link>
@@ -166,6 +186,20 @@ export default function Applicants() {
                 </div>
             )}
         </div>
+
+            {/* OTP Virtual Keyboard for resume download */}
+            {otpResumeId && (
+                <VirtualKeyboard
+                    length={6}
+                    onComplete={(otp) => {
+                        const id = otpResumeId;
+                        setOtpResumeId(null);
+                        doDownloadResume(id, otp);
+                    }}
+                    onClose={() => setOtpResumeId(null)}
+                />
+            )}
+        </>
     );
 }
 

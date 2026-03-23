@@ -1,0 +1,180 @@
+/* ─── Virtual Keyboard Overlay ──────────────────────────────────────── */
+
+.vk-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: vk-fadeIn 0.2s ease;
+}
+
+@keyframes vk-fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.vk-container {
+    width: 380px;
+    max-width: 92vw;
+    padding: 2rem;
+    border-radius: 20px;
+    text-align: center;
+    animation: vk-slideUp 0.3s ease;
+}
+
+@keyframes vk-slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* ─── Header ───────────────────────────────────────────────────────── */
+
+.vk-header {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.vk-header h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.25rem;
+    color: var(--text-primary, #fff);
+}
+
+.vk-header p {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary, #aaa);
+}
+
+.vk-close {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary, #aaa);
+    font-size: 1.5rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.vk-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary, #fff);
+}
+
+/* ─── OTP Display ──────────────────────────────────────────────────── */
+
+.vk-display {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.vk-dot {
+    width: 40px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 1.3rem;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary, #aaa);
+    transition: all 0.2s ease;
+}
+
+.vk-dot.filled {
+    border-color: var(--primary, #646cff);
+    background: rgba(100, 108, 255, 0.15);
+    color: var(--primary, #646cff);
+    animation: vk-dotPop 0.15s ease;
+}
+
+.vk-dot.active {
+    border-color: var(--accent, #22d3ee);
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.25);
+}
+
+@keyframes vk-dotPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+/* ─── Keypad Grid ──────────────────────────────────────────────────── */
+
+.vk-keypad {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.vk-key {
+    height: 52px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary, #fff);
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.vk-key:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.vk-key:active:not(:disabled) {
+    transform: scale(0.95);
+    background: rgba(100, 108, 255, 0.3);
+}
+
+.vk-key:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.vk-key-action {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary, #aaa);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.vk-key-action:hover:not(:disabled) {
+    color: var(--accent, #22d3ee);
+}
+
+/* ─── Footer ───────────────────────────────────────────────────────── */
+
+.vk-footer {
+    margin-top: 0.5rem;
+}
+
+.vk-security-badge {
+    font-size: 0.72rem;
+    color: var(--text-secondary, #aaa);
+    opacity: 0.7;
+}

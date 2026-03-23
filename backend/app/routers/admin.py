@@ -12,6 +12,7 @@ Security features:
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 from typing import Optional
+import json
 
 from app.database import get_db
 from app.models.user import User, UserRole
@@ -179,13 +180,36 @@ async def suspend_user(
 async def delete_user(
     user_id: str,
     request: Request,
+    otp_code: str = None,
     db: DBSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
     """
     Delete a user account and all associated data.
+    Requires OTP verification if admin has 2FA enabled.
     Cascade deletes resumes, sessions, and used OTPs.
     """
+    # OTP verification required (high-risk action)
+    if not admin.is_totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Two-factor authentication must be enabled before deleting users",
+        )
+    if not otp_code:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="OTP verification required for user deletion",
+        )
+    from app.security.totp import verify_totp
+    if not verify_totp(admin.totp_secret, otp_code, str(admin.id), db):
+        log_audit(db, "admin_delete_otp_failed", user_id=admin.id,
+                  ip_address=get_client_ip(request),
+                  details={"target_user": user_id})
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid OTP code",
+        )
+
     # Prevent self-deletion
     if str(admin.id) == user_id:
         raise HTTPException(
@@ -233,7 +257,7 @@ async def get_audit_logs(
 ):
     """
     View audit logs with optional filters.
-    Returns most recent entries first.
+    Returns most recent entries first, including hash chain fields.
     """
     query = db.query(AuditLog)
 
@@ -254,10 +278,79 @@ async def get_audit_logs(
                 "ip_address": log.ip_address,
                 "details": log.details,
                 "created_at": log.created_at.isoformat() + "Z",
+                "prev_hash": log.prev_hash,
+                "entry_hash": log.entry_hash,
+                "signature": log.signature[:16] + "..." if log.signature else None,
             }
             for log in logs
         ],
         "total": total,
         "skip": skip,
         "limit": limit,
+    }
+
+
+@router.get("/audit-logs/verify")
+async def verify_audit_log_integrity(
+    db: DBSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """
+    Verify the integrity of the entire audit log chain.
+
+    Walks from entry #1 to the latest, re-computing hashes and verifying:
+    1. Each entry's hash matches its content
+    2. Each entry's prev_hash matches the previous entry's entry_hash
+    3. Each PKI signature is valid
+    """
+    from app.utils import _compute_entry_hash, _format_ts
+    from app.security.pki import verify_signature
+
+    logs = db.query(AuditLog).order_by(AuditLog.id.asc()).all()
+    total = len(logs)
+
+    if total == 0:
+        return {"valid": True, "total_entries": 0, "broken_at": None, "message": "No audit logs to verify"}
+
+    prev_hash = "0" * 64
+    broken_at = None
+
+    for log in logs:
+        # Skip entries without hash chain (should not exist after backfill)
+        if not log.entry_hash:
+            prev_hash = "0" * 64
+            continue
+
+        # Check prev_hash linkage
+        if log.prev_hash != prev_hash:
+            broken_at = log.id
+            break
+
+        # Re-compute the hash using consistent timestamp format
+        expected_hash = _compute_entry_hash(
+            action=log.action,
+            user_id=str(log.user_id) if log.user_id else "",
+            ip_address=log.ip_address or "",
+            timestamp=_format_ts(log.created_at),
+            details=log.details or {},
+            prev_hash=log.prev_hash,
+        )
+
+        if log.entry_hash != expected_hash:
+            broken_at = log.id
+            break
+
+        # Verify PKI signature
+        if log.signature:
+            if not verify_signature(log.entry_hash.encode("utf-8"), log.signature):
+                broken_at = log.id
+                break
+
+        prev_hash = log.entry_hash
+
+    return {
+        "valid": broken_at is None,
+        "total_entries": total,
+        "broken_at": broken_at,
+        "message": "Chain integrity verified" if broken_at is None else f"Tamper detected at entry #{broken_at}",
     }

@@ -3,11 +3,16 @@ import { resumeApi } from '../api/client';
 import Icon from '../components/Icons';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
+import VirtualKeyboard from '../components/VirtualKeyboard';
+import { useAuth } from '../context/AuthContext';
 
 export default function Resumes() {
+    const { user } = useAuth();
     const [resumes, setResumes] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [dragOver, setDragOver] = useState(false);
+    const [otpTarget, setOtpTarget] = useState(null); // resume being downloaded
+    const [verifyStatus, setVerifyStatus] = useState({}); // { resumeId: { verified, message } }
     const toast = useToast();
     const confirm = useConfirm();
 
@@ -28,7 +33,7 @@ export default function Resumes() {
         setUploading(true);
         try {
             await resumeApi.upload(file);
-            toast.success('Resume uploaded and encrypted successfully!');
+            toast.success('Resume uploaded, encrypted & signed!');
             fetchResumes();
         } catch (err) {
             toast.error(err.response?.data?.detail || 'Upload failed');
@@ -49,9 +54,9 @@ export default function Resumes() {
         else toast.error('Only PDF files are accepted');
     };
 
-    const handleDownload = async (resume) => {
+    const doDownload = async (resume, otpCode) => {
         try {
-            const { data } = await resumeApi.download(resume.id);
+            const { data } = await resumeApi.download(resume.id, otpCode || undefined);
             const url = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
             const a = document.createElement('a');
             a.href = url;
@@ -59,8 +64,40 @@ export default function Resumes() {
             a.click();
             window.URL.revokeObjectURL(url);
             toast.success('Download started');
+        } catch (err) {
+            const detail = err.response?.data;
+            // Blob error responses need parsing
+            if (detail instanceof Blob) {
+                const text = await detail.text();
+                try { toast.error(JSON.parse(text).detail); } catch { toast.error('Download failed'); }
+            } else {
+                toast.error(detail?.detail || 'Download failed');
+            }
+        }
+    };
+
+    const handleDownload = (resume) => {
+        if (!user?.is_totp_enabled) {
+            toast.error('You must enable Two-Factor Authentication in your Profile before downloading resumes');
+            return;
+        }
+        // Show VirtualKeyboard for OTP (high-risk action)
+        setOtpTarget(resume);
+    };
+
+    const handleOtpComplete = async (otp) => {
+        if (!otpTarget) return;
+        setOtpTarget(null);
+        await doDownload(otpTarget, otp);
+    };
+
+    const handleVerify = async (resumeId) => {
+        try {
+            const { data } = await resumeApi.verify(resumeId);
+            setVerifyStatus(prev => ({ ...prev, [resumeId]: data }));
+            toast[data.verified ? 'success' : 'error'](data.message);
         } catch {
-            toast.error('Download failed');
+            toast.error('Verification failed');
         }
     };
 
@@ -110,7 +147,7 @@ export default function Resumes() {
                     <input type="file" accept=".pdf" onChange={handleUpload} hidden disabled={uploading} />
                 </label>
                 <span className="upload-note">
-                    <Icon name="lock" size={12} /> Max 2 MB · PDF only · Encrypted at rest
+                    <Icon name="lock" size={12} /> Max 2 MB · PDF only · Encrypted & PKI signed
                 </span>
             </div>
 
@@ -125,9 +162,17 @@ export default function Resumes() {
                                 <div>
                                     <strong>{r.original_filename}</strong>
                                     <small>{formatSize(r.file_size)} · {new Date(r.uploaded_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</small>
+                                    {verifyStatus[r.id] && (
+                                        <span className={`badge ${verifyStatus[r.id].verified ? 'badge-success' : 'badge-danger'}`} style={{ marginLeft: 8, fontSize: '0.7rem' }}>
+                                            {verifyStatus[r.id].verified ? '✓ Verified' : '✗ Tampered'}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <div className="resume-actions">
+                                <button className="btn btn-ghost btn-sm" onClick={() => handleVerify(r.id)} title="Verify PKI signature">
+                                    <Icon name="shield" size={14} /> Verify
+                                </button>
                                 <button className="btn btn-ghost btn-sm" onClick={() => handleDownload(r)}>
                                     <Icon name="download" size={14} /> Download
                                 </button>
@@ -144,6 +189,15 @@ export default function Resumes() {
                     <p>No resumes uploaded yet</p>
                     <span className="text-muted">Upload your first PDF to get started</span>
                 </div>
+            )}
+
+            {/* OTP Virtual Keyboard for resume download */}
+            {otpTarget && (
+                <VirtualKeyboard
+                    length={6}
+                    onComplete={handleOtpComplete}
+                    onClose={() => setOtpTarget(null)}
+                />
             )}
         </div>
     );

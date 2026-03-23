@@ -25,6 +25,7 @@ from app.config import settings
 from app.dependencies import get_current_user
 from app.utils import get_client_ip, log_audit
 from app.security.sanitizer import sanitize_string
+from app.security.pki import sign_data, verify_signature as pki_verify
 
 router = APIRouter(prefix="/api/messages", tags=["Messaging"])
 
@@ -73,6 +74,7 @@ class MessageResponse(BaseModel):
     sender_name: Optional[str] = None
     encrypted_content: str
     nonce: Optional[str] = None
+    verified: Optional[bool] = None
     sent_at: datetime
 
 
@@ -343,6 +345,13 @@ async def send_message(
         encrypted_content=encrypted_content,
         nonce=nonce,
     )
+
+    # PKI sign the message content
+    try:
+        msg.signature = sign_data(encrypted_content.encode("utf-8"))
+    except Exception:
+        msg.signature = None
+
     db.add(msg)
     db.commit()
     db.refresh(msg)
@@ -396,6 +405,15 @@ async def list_messages(
                 resp.encrypted_content = decrypted
             except Exception:
                 resp.encrypted_content = "[decryption failed]"
+
+        # Verify PKI signature
+        if msg.signature:
+            resp.verified = pki_verify(
+                msg.encrypted_content.encode("utf-8"), msg.signature
+            )
+        else:
+            resp.verified = None  # No signature (pre-PKI message)
+
         results.append(resp)
 
     return MessageListResponse(messages=results, total=total)

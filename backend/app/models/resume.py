@@ -9,7 +9,7 @@ Security features:
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, String, Text, Integer, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -33,6 +33,9 @@ class Resume(Base):
 
     # Encryption tracking — enables key rotation in future
     encryption_key_id = Column(String(64), nullable=False, default="v1")
+
+    # PKI digital signature — tamper detection
+    signature = Column(Text, nullable=True)
 
     # Timestamps
     uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)

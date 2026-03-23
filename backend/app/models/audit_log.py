@@ -6,7 +6,7 @@ UsedOTP: Prevents TOTP replay attacks by tracking recently used codes.
 """
 
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, String, Text, Integer, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -15,7 +15,7 @@ from app.database import Base
 class AuditLog(Base):
     """
     Immutable log of security-relevant actions.
-    Future milestone: add hash chaining for tamper-evidence.
+    Tamper-evident via SHA-256 hash chaining and PKI digital signatures.
     """
     __tablename__ = "audit_logs"
 
@@ -29,6 +29,11 @@ class AuditLog(Base):
     action = Column(String(100), nullable=False, index=True)
     ip_address = Column(String(45), nullable=True)
     details = Column(JSONB, nullable=True)
+
+    # Tamper-evident hash chain
+    prev_hash = Column(String(64), nullable=True)   # SHA-256 of previous entry
+    entry_hash = Column(String(64), nullable=True)   # SHA-256 of this entry
+    signature = Column(Text, nullable=True)          # PKI signature of entry_hash
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

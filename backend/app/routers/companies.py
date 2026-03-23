@@ -160,7 +160,7 @@ async def update_company(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update a company. Only company admins can update."""
+    """Update a company. Only the creator can update."""
     company = db.query(Company).filter(Company.id == company_id).first()
     if not company:
         raise HTTPException(
@@ -168,10 +168,11 @@ async def update_company(
             detail="Company not found",
         )
 
-    if not _is_company_admin(db, company_id, current_user):
+    # Only the person who created the company can edit it
+    if str(company.created_by) != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not authorized to manage this company",
+            detail="Only the person who created this company can edit it",
         )
 
     update_data = data.model_dump(exclude_unset=True)
@@ -210,7 +211,7 @@ async def delete_company(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a company. Only the company owner or platform admin can delete."""
+    """Delete a company. Only platform admins can delete (fraud prevention)."""
     company = db.query(Company).filter(Company.id == company_id).first()
     if not company:
         raise HTTPException(
@@ -218,10 +219,11 @@ async def delete_company(
             detail="Company not found",
         )
 
-    if not _is_company_owner(db, company_id, current_user):
+    # Only platform admins can delete companies
+    if current_user.role.value != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the company owner can delete this company",
+            detail="Only platform administrators can delete companies",
         )
 
     company_name = company.name

@@ -123,6 +123,9 @@ class Message(Base):
     # For E2EE messages: IV/nonce used for AES-GCM encryption
     nonce = Column(String(64), nullable=True)
 
+    # PKI digital signature — message authenticity
+    signature = Column(Text, nullable=True)
+
     sent_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships

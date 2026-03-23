@@ -21,6 +21,8 @@ from app.models.resume import Resume
 from app.schemas.resume import ResumeResponse, ResumeListResponse
 from app.security.file_validator import validate_pdf, FileValidationError
 from app.security.file_encryption import encrypt_file, decrypt_file, FileEncryptionError
+from app.security.pki import sign_data, verify_signature
+from app.security.totp import verify_totp
 from app.dependencies import get_current_user
 from app.utils import get_client_ip, log_audit
 from app.config import settings
@@ -91,7 +93,13 @@ async def upload_resume(
             detail="File storage error",
         )
 
-    # 4. Save metadata
+    # 4. PKI sign the encrypted content
+    try:
+        file_signature = sign_data(encrypted_content)
+    except Exception:
+        file_signature = None
+
+    # 5. Save metadata
     resume = Resume(
         user_id=current_user.id,
         original_filename=file.filename or "resume.pdf",
@@ -99,6 +107,7 @@ async def upload_resume(
         file_path=file_path,
         file_size=len(validated_content),  # Original size
         encryption_key_id="v1",
+        signature=file_signature,
     )
     db.add(resume)
     db.commit()
@@ -106,7 +115,8 @@ async def upload_resume(
 
     log_audit(db, "resume_uploaded", user_id=current_user.id,
               ip_address=client_ip,
-              details={"resume_id": str(resume.id), "original_name": file.filename})
+              details={"resume_id": str(resume.id), "original_name": file.filename,
+                       "signed": file_signature is not None})
 
     return ResumeResponse(
         id=str(resume.id),
@@ -142,17 +152,42 @@ async def list_my_resumes(
 async def download_resume(
     resume_id: str,
     request: Request,
+    otp_code: str = None,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Download a resume (decrypted on-the-fly).
 
+    Security:
+    - ALL users must verify via OTP (high-risk action)
+    - PKI signature is verified before serving (tamper detection)
+
     Access control:
     - Owner can always download
     - Recruiters and admins can download any resume
     - Regular users cannot download others' resumes
     """
+    # OTP verification required for ALL downloads (high-risk action)
+    if not current_user.is_totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Two-factor authentication must be enabled before downloading resumes",
+        )
+    if not otp_code:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="OTP verification required for resume download",
+        )
+    if not verify_totp(current_user.totp_secret, otp_code, str(current_user.id), db):
+        log_audit(db, "resume_download_otp_failed", user_id=current_user.id,
+                  ip_address=get_client_ip(request),
+                  details={"resume_id": resume_id})
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid OTP code",
+        )
+
     resume = db.query(Resume).filter(Resume.id == resume_id).first()
     if not resume:
         raise HTTPException(
@@ -174,6 +209,17 @@ async def download_resume(
     try:
         with open(resume.file_path, "rb") as f:
             encrypted_content = f.read()
+
+        # Verify PKI signature before decrypting
+        if resume.signature:
+            if not verify_signature(encrypted_content, resume.signature):
+                log_audit(db, "resume_tamper_detected", user_id=current_user.id,
+                          ip_address=get_client_ip(request),
+                          details={"resume_id": resume_id})
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Resume integrity check failed — file may have been tampered with",
+                )
 
         decrypted_content = decrypt_file(encrypted_content)
     except FileNotFoundError:
@@ -199,6 +245,39 @@ async def download_resume(
             "Content-Length": str(len(decrypted_content)),
         },
     )
+
+
+@router.get("/{resume_id}/verify")
+async def verify_resume_integrity(
+    resume_id: str,
+    request: Request,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Verify resume integrity without downloading.
+    Checks the PKI digital signature against the stored encrypted file.
+    """
+    resume = db.query(Resume).filter(Resume.id == resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found")
+
+    if not resume.signature:
+        return {"verified": False, "message": "No signature found (uploaded before PKI was enabled)"}
+
+    try:
+        with open(resume.file_path, "rb") as f:
+            encrypted_content = f.read()
+        is_valid = verify_signature(encrypted_content, resume.signature)
+    except FileNotFoundError:
+        return {"verified": False, "message": "File not found on disk"}
+    except Exception:
+        return {"verified": False, "message": "Verification error"}
+
+    return {
+        "verified": is_valid,
+        "message": "Signature valid — file integrity confirmed" if is_valid else "TAMPER DETECTED — file has been modified",
+    }
 
 
 @router.delete("/{resume_id}")

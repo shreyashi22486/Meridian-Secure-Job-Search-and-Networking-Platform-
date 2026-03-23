@@ -33,18 +33,12 @@ from app.utils import get_client_ip, log_audit
 router = APIRouter(prefix="/api/applications", tags=["Applications"])
 
 
-def _is_company_admin_for_job(db: DBSession, job_id, user: User) -> bool:
-    """Check if user is a company admin for the job's company."""
-    if user.role.value == "admin":
-        return True
+def _is_job_poster(db: DBSession, job_id, user: User) -> bool:
+    """Check if user is the person who posted this job (creator only)."""
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         return False
-    ca = db.query(CompanyAdmin).filter(
-        CompanyAdmin.company_id == job.company_id,
-        CompanyAdmin.user_id == user.id,
-    ).first()
-    return ca is not None
+    return job.posted_by == user.id
 
 
 def _app_response(app: Application) -> ApplicationResponse:
@@ -181,9 +175,9 @@ async def list_applicants(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List all applicants for a job. Only company admins can view."""
-    if not _is_company_admin_for_job(db, job_id, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+    """List all applicants for a job. Only the job poster can view."""
+    if not _is_job_poster(db, job_id, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the person who posted this job can view applicants")
 
     apps = db.query(Application).filter(
         Application.job_id == job_id,
@@ -203,13 +197,13 @@ async def update_application_status(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update application status. Only company admins can update."""
+    """Update application status. Only the job poster can update."""
     app = db.query(Application).filter(Application.id == application_id).first()
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
 
-    if not _is_company_admin_for_job(db, str(app.job_id), current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+    if not _is_job_poster(db, str(app.job_id), current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the person who posted this job can update application status")
 
     old_status = app.status.value
     app.status = ApplicationStatus(data.status)
@@ -239,8 +233,8 @@ async def update_recruiter_notes(
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
 
-    if not _is_company_admin_for_job(db, str(app.job_id), current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+    if not _is_job_poster(db, str(app.job_id), current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the person who posted this job can update notes")
 
     app.recruiter_notes = data.notes
     db.commit()

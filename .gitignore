@@ -34,6 +34,7 @@ yarn-error.log*
 # ─── Encrypted resume storage (NEVER commit) ────────────────────────────
 backend/data/resumes/
 backend/data/avatars/
+backend/data/pki/
 
 # ─── IDE / Editor ────────────────────────────────────────────────────────
 .vscode/

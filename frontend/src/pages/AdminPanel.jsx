@@ -3,13 +3,19 @@ import { adminApi } from '../api/client';
 import Icon from '../components/Icons';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
+import VirtualKeyboard from '../components/VirtualKeyboard';
+import { useAuth } from '../context/AuthContext';
 
 export default function AdminPanel() {
+    const { user } = useAuth();
     const [users, setUsers] = useState([]);
     const [logs, setLogs] = useState([]);
     const [activeTab, setActiveTab] = useState('users');
     const [totalUsers, setTotalUsers] = useState(0);
     const [totalLogs, setTotalLogs] = useState(0);
+    const [deleteTarget, setDeleteTarget] = useState(null); // user being deleted (needs OTP)
+    const [chainStatus, setChainStatus] = useState(null); // audit log verify result
+    const [verifying, setVerifying] = useState(false);
     const toast = useToast();
     const confirm = useConfirm();
 
@@ -69,17 +75,42 @@ export default function AdminPanel() {
     const handleDelete = async (userId, name) => {
         const ok = await confirm({
             title: 'Delete User Permanently',
-            message: `"${name}" and ALL their data (resumes, profile, skills) will be permanently deleted. This cannot be undone.`,
+            message: `"${name}" and ALL their data will be permanently deleted. OTP verification required.`,
             danger: true,
-            confirmText: 'Delete User',
+            confirmText: 'Continue to OTP',
         });
         if (!ok) return;
+        if (!user?.is_totp_enabled) {
+            toast.error('You must enable Two-Factor Authentication in your Profile before deleting users');
+            return;
+        }
+        // Show VirtualKeyboard for OTP
+        setDeleteTarget({ userId, name });
+    };
+
+    const handleDeleteOtp = async (otp) => {
+        if (!deleteTarget) return;
+        const { userId } = deleteTarget;
+        setDeleteTarget(null);
         try {
-            const { data } = await adminApi.deleteUser(userId);
+            const { data } = await adminApi.deleteUser(userId, otp);
             toast.success(data.message || 'User deleted');
             setUsers(prev => prev.filter(u => u.id !== userId));
             setTotalUsers(prev => prev - 1);
         } catch (err) { toast.error(err.response?.data?.detail || 'Deletion failed'); }
+    };
+
+    const handleVerifyChain = async () => {
+        setVerifying(true);
+        try {
+            const { data } = await adminApi.verifyAuditLogs();
+            setChainStatus(data);
+            toast[data.valid ? 'success' : 'error'](data.message);
+        } catch {
+            toast.error('Verification request failed');
+        } finally {
+            setVerifying(false);
+        }
     };
 
     return (
@@ -165,9 +196,25 @@ export default function AdminPanel() {
 
             {activeTab === 'logs' && (
                 <div className="table-container glass-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h3 style={{ margin: 0 }}>Audit Log Chain</h3>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                            {chainStatus && (
+                                <span className={`badge ${chainStatus.valid ? 'badge-success' : 'badge-danger'}`}>
+                                    {chainStatus.valid
+                                        ? `✓ Chain Valid (${chainStatus.total_entries} entries)`
+                                        : `✗ Tamper Detected at #${chainStatus.broken_at}`}
+                                </span>
+                            )}
+                            <button className="btn btn-primary btn-sm" onClick={handleVerifyChain} disabled={verifying}>
+                                <Icon name="shield" size={14} />
+                                {verifying ? 'Verifying…' : 'Verify Log Integrity'}
+                            </button>
+                        </div>
+                    </div>
                     <table className="data-table">
                         <thead>
-                            <tr><th>Time</th><th>Action</th><th>User ID</th><th>IP</th><th>Details</th></tr>
+                            <tr><th>Time</th><th>Action</th><th>User ID</th><th>IP</th><th>Hash</th><th>Sig</th><th>Details</th></tr>
                         </thead>
                         <tbody>
                             {logs.map((log) => (
@@ -182,6 +229,16 @@ export default function AdminPanel() {
                                     <td><span className="badge badge-action">{log.action}</span></td>
                                     <td className="mono">{log.user_id ? log.user_id.slice(0, 8) + '…' : '—'}</td>
                                     <td className="mono">{log.ip_address || '—'}</td>
+                                    <td className="mono" style={{ fontSize: '0.65rem', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {log.entry_hash ? log.entry_hash.slice(0, 12) + '…' : '—'}
+                                    </td>
+                                    <td>
+                                        {log.signature ? (
+                                            <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>✓</span>
+                                        ) : (
+                                            <span className="badge badge-muted" style={{ fontSize: '0.65rem' }}>—</span>
+                                        )}
+                                    </td>
                                     <td className="details-cell">
                                         {log.details ? (
                                             <pre className="details-json">
@@ -194,6 +251,15 @@ export default function AdminPanel() {
                         </tbody>
                     </table>
                 </div>
+            )}
+
+            {/* OTP Virtual Keyboard for user deletion */}
+            {deleteTarget && (
+                <VirtualKeyboard
+                    length={6}
+                    onComplete={handleDeleteOtp}
+                    onClose={() => setDeleteTarget(null)}
+                />
             )}
         </div>
     );

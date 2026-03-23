@@ -230,7 +230,7 @@ async def update_job(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update a job posting. Only company admins can update."""
+    """Update a job posting. Only the original poster (creator) can update."""
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(
@@ -238,10 +238,12 @@ async def update_job(
             detail="Job not found",
         )
 
-    # Only company admins, platform admins, or the original poster can update
-    is_poster = (job.posted_by == current_user.id)
-    if not is_poster:
-        _check_company_admin(db, job.company_id, current_user)
+    # Only the person who created (posted) the job can edit it
+    if job.posted_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the person who posted this job can edit it",
+        )
 
     update_data = data.model_dump(exclude_unset=True)
     if not update_data:
@@ -276,7 +278,7 @@ async def delete_job(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a job posting. Only company admins can delete."""
+    """Delete a job posting. Only platform admins can delete (fraud prevention)."""
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(
@@ -284,10 +286,12 @@ async def delete_job(
             detail="Job not found",
         )
 
-    # Only company admins, platform admins, or the original poster can delete
-    is_poster = (job.posted_by == current_user.id)
-    if not is_poster:
-        _check_company_admin(db, job.company_id, current_user)
+    # Only platform admins can delete jobs (fraud prevention)
+    if current_user.role.value != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only platform administrators can delete job postings",
+        )
 
     job_title = job.title
     company_id = str(job.company_id)

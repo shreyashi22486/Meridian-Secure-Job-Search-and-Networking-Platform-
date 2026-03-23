@@ -312,13 +312,15 @@ async def change_password(
                   ip_address=client_ip, details={"reason": "wrong_current_password"})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
 
-    if current_user.is_totp_enabled:
-        if not data.totp_code:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="TOTP code is required")
-        if not verify_totp(current_user.totp_secret, data.totp_code, str(current_user.id), db):
-            log_audit(db, "password_change_failed", user_id=current_user.id,
-                      ip_address=client_ip, details={"reason": "invalid_totp"})
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid TOTP code")
+    if not current_user.is_totp_enabled:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Two-factor authentication must be enabled before changing your password")
+    if not data.totp_code:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="TOTP code is required")
+    if not verify_totp(current_user.totp_secret, data.totp_code, str(current_user.id), db):
+        log_audit(db, "password_change_failed", user_id=current_user.id,
+                  ip_address=client_ip, details={"reason": "invalid_totp"})
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid TOTP code")
 
     try:
         validate_password_strength(data.new_password)

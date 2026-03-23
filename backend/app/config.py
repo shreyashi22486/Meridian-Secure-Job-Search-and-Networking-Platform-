@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 2_097_152  # 2 MB
     MAX_AVATAR_SIZE: int = 2_097_152  # 2 MB
 
+    # PKI (Public Key Infrastructure)
+    PKI_KEY_DIR: str = "./data/pki"
+
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173"
 

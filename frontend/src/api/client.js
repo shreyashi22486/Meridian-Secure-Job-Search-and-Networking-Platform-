@@ -123,7 +123,11 @@ export const resumeApi = {
         });
     },
     list: () => api.get('/resumes/me'),
-    download: (id) => api.get(`/resumes/${id}/download`, { responseType: 'blob' }),
+    download: (id, otpCode) => api.get(`/resumes/${id}/download`, {
+        responseType: 'blob',
+        params: otpCode ? { otp_code: otpCode } : {},
+    }),
+    verify: (id) => api.get(`/resumes/${id}/verify`),
     remove: (id) => api.delete(`/resumes/${id}`),
 };
 
@@ -133,8 +137,11 @@ export const adminApi = {
     listUsers: (params) => api.get('/admin/users', { params }),
     changeRole: (userId, role) => api.put(`/admin/users/${userId}/role`, null, { params: { role } }),
     suspend: (userId) => api.put(`/admin/users/${userId}/suspend`),
-    deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
+    deleteUser: (userId, otpCode) => api.delete(`/admin/users/${userId}`, {
+        params: otpCode ? { otp_code: otpCode } : {},
+    }),
     auditLogs: (params) => api.get('/admin/audit-logs', { params }),
+    verifyAuditLogs: () => api.get('/admin/audit-logs/verify'),
 };
 
 // ─── Companies ────────────────────────────────────────────────────────────

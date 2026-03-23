@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icons';
+import VirtualKeyboard from '../components/VirtualKeyboard';
 
 export default function Login() {
     const { login, verify2FA } = useAuth();
@@ -55,27 +56,25 @@ export default function Login() {
                             <Icon name="key" size={28} />
                         </div>
                         <h1>Two-Factor Verification</h1>
-                        <p>Enter the 6-digit code from your authenticator app</p>
+                        <p>Use the virtual keyboard to enter your 6-digit code</p>
                     </div>
-                    <form onSubmit={handle2FA}>
-                        {error && <div className="alert alert-error">{error}</div>}
-                        <div className="form-group">
-                            <label htmlFor="otp">Verification Code</label>
-                            <input
-                                id="otp"
-                                type="text"
-                                value={otpCode}
-                                onChange={(e) => setOtpCode(e.target.value)}
-                                placeholder="000000"
-                                maxLength={6}
-                                className="input-otp"
-                                autoFocus
-                            />
-                        </div>
-                        <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-                            {loading ? 'Verifying…' : 'Verify & Sign In'}
-                        </button>
-                    </form>
+                    {error && <div className="alert alert-error">{error}</div>}
+                    <VirtualKeyboard
+                        length={6}
+                        onComplete={(otp) => {
+                            setOtpCode(otp);
+                            // Auto-submit when OTP is complete
+                            setLoading(true);
+                            verify2FA(otp, tempToken)
+                                .then(() => { window.location.href = '/dashboard'; })
+                                .catch((err) => {
+                                    setError(err.response?.data?.detail || 'Invalid OTP code');
+                                    setLoading(false);
+                                });
+                        }}
+                        onClose={() => setTempToken(null)}
+                    />
+                    {loading && <p style={{ marginTop: '1rem', opacity: 0.7 }}>Verifying…</p>}
                 </div>
             </div>
         );
