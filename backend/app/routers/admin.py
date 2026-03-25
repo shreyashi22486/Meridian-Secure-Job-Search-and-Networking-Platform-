@@ -12,7 +12,6 @@ Security features:
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 from typing import Optional
-import json
 
 from app.database import get_db
 from app.models.user import User, UserRole

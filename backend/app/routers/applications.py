@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session as DBSession
 from app.database import get_db
 from app.models.user import User
 from app.models.job import Job
-from app.models.company import CompanyAdmin
 from app.models.application import Application, ApplicationStatus
 from app.models.resume import Resume
 from app.schemas.application import (
