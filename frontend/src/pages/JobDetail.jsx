@@ -19,14 +19,15 @@ export default function JobDetail() {
     const [applying, setApplying] = useState(false);
     const [applied, setApplied] = useState(false);
 
-    const isRecruiter = user?.role?.toLowerCase() === 'recruiter' || user?.role?.toLowerCase() === 'admin';
+    const isAdmin = user?.role?.toLowerCase() === 'admin';
+    const isRecruiter = user?.role?.toLowerCase() === 'recruiter' || isAdmin;
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
     const [updating, setUpdating] = useState(false);
 
-    const canEditJob = user?.role?.toLowerCase() === 'admin' ||
-        (job && user?.id === job.posted_by) ||
-        (isRecruiter && job); // Simplified: assume recruiters can edit jobs in their system for now
+    // Only the person who posted the job can edit it
+    const isJobPoster = job && user && user.id === job.posted_by;
+    const canEditJob = isJobPoster;
 
     useEffect(() => {
         const fetchJob = async () => {
@@ -302,10 +303,28 @@ export default function JobDetail() {
                             </button>
                         )}
 
-                        {isRecruiter && (
+                        {isJobPoster && (
                             <Link to={`/jobs/${id}/applicants`} className="btn btn-glass btn-full" style={{ marginTop: '0.5rem', textDecoration: 'none' }}>
                                 <Icon name="users" size={14} /> View Applicants
                             </Link>
+                        )}
+
+                        {isAdmin && (
+                            <button
+                                className="btn btn-danger btn-full"
+                                style={{ marginTop: '0.5rem' }}
+                                onClick={async () => {
+                                    if (!window.confirm('Are you sure you want to delete this job posting? This action cannot be undone.')) return;
+                                    try {
+                                        await jobApi.remove(id);
+                                        navigate('/jobs');
+                                    } catch (err) {
+                                        setError(err.response?.data?.detail || 'Failed to delete job');
+                                    }
+                                }}
+                            >
+                                <Icon name="trash" size={14} /> Delete Job
+                            </button>
                         )}
                     </div>
 

@@ -13,8 +13,10 @@ export default function AdminPanel() {
     const [activeTab, setActiveTab] = useState('users');
     const [totalUsers, setTotalUsers] = useState(0);
     const [totalLogs, setTotalLogs] = useState(0);
-    const [deleteTarget, setDeleteTarget] = useState(null); // user being deleted (needs OTP)
-    const [chainStatus, setChainStatus] = useState(null); // audit log verify result
+    const [logPage, setLogPage] = useState(0);
+    const [logLoading, setLogLoading] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [chainStatus, setChainStatus] = useState(null);
     const [verifying, setVerifying] = useState(false);
     const toast = useToast();
     const confirm = useConfirm();
@@ -27,12 +29,17 @@ export default function AdminPanel() {
         } catch { toast.error('Failed to load users'); }
     };
 
-    const fetchLogs = async () => {
+    const LOG_LIMIT = 25;
+
+    const fetchLogs = async (page = 0) => {
+        setLogLoading(true);
         try {
-            const { data } = await adminApi.auditLogs({ limit: 50 });
+            const { data } = await adminApi.auditLogs({ limit: LOG_LIMIT, skip: page * LOG_LIMIT });
             setLogs(data.logs);
             setTotalLogs(data.total);
+            setLogPage(page);
         } catch { toast.error('Failed to load audit logs'); }
+        finally { setLogLoading(false); }
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -195,10 +202,13 @@ export default function AdminPanel() {
             )}
 
             {activeTab === 'logs' && (
-                <div className="table-container glass-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h3 style={{ margin: 0 }}>Audit Log Chain</h3>
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Audit Log Chain</h3>
+                            <span className="text-muted" style={{ fontSize: '0.8rem' }}>{totalLogs} total events</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             {chainStatus && (
                                 <span className={`badge ${chainStatus.valid ? 'badge-success' : 'badge-danger'}`}>
                                     {chainStatus.valid
@@ -212,44 +222,103 @@ export default function AdminPanel() {
                             </button>
                         </div>
                     </div>
-                    <table className="data-table">
-                        <thead>
-                            <tr><th>Time</th><th>Action</th><th>User ID</th><th>IP</th><th>Hash</th><th>Sig</th><th>Details</th></tr>
-                        </thead>
-                        <tbody>
-                            {logs.map((log) => (
-                                <tr key={log.id}>
-                                    <td className="mono">
-                                        {new Date(log.created_at).toLocaleString('en-IN', {
-                                            timeZone: 'Asia/Kolkata',
-                                            dateStyle: 'short',
-                                            timeStyle: 'medium'
-                                        })}
-                                    </td>
-                                    <td><span className="badge badge-action">{log.action}</span></td>
-                                    <td className="mono">{log.user_id ? log.user_id.slice(0, 8) + '…' : '—'}</td>
-                                    <td className="mono">{log.ip_address || '—'}</td>
-                                    <td className="mono" style={{ fontSize: '0.65rem', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {log.entry_hash ? log.entry_hash.slice(0, 12) + '…' : '—'}
-                                    </td>
-                                    <td>
-                                        {log.signature ? (
-                                            <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>✓</span>
-                                        ) : (
-                                            <span className="badge badge-muted" style={{ fontSize: '0.65rem' }}>—</span>
-                                        )}
-                                    </td>
-                                    <td className="details-cell">
-                                        {log.details ? (
-                                            <pre className="details-json">
-                                                {JSON.stringify(log.details, null, 2)}
-                                            </pre>
-                                        ) : '—'}
-                                    </td>
+
+                    {logLoading ? (
+                        <div className="empty-state"><div className="spinner" /></div>
+                    ) : (
+                        <table className="data-table" style={{ tableLayout: 'fixed', width: '100%', fontSize: '0.82rem' }}>
+                            <colgroup>
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '15%' }} />
+                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '11%' }} />
+                                <col style={{ width: '5%' }} />
+                                <col style={{ width: '35%' }} />
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Action</th>
+                                    <th>User ID</th>
+                                    <th>IP</th>
+                                    <th>Hash</th>
+                                    <th style={{ textAlign: 'center' }}>Sig</th>
+                                    <th>Details</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {logs.map((log) => (
+                                    <tr key={log.id}>
+                                        <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {new Date(log.created_at).toLocaleString('en-IN', {
+                                                timeZone: 'Asia/Kolkata',
+                                                dateStyle: 'short',
+                                                timeStyle: 'medium'
+                                            })}
+                                        </td>
+                                        <td><span className="badge badge-action" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>{log.action}</span></td>
+                                        <td>
+                                            <div className="mono" style={{ fontSize: '0.72rem', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+                                                {log.user_id || '—'}
+                                            </div>
+                                        </td>
+                                        <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.ip_address || '—'}</td>
+                                        <td>
+                                            <div className="mono" style={{ fontSize: '0.65rem', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+                                                {log.entry_hash || '—'}
+                                            </div>
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            {log.signature ? (
+                                                <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>✓</span>
+                                            ) : (
+                                                <span className="badge badge-muted" style={{ fontSize: '0.65rem' }}>—</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <div style={{ fontSize: '0.72rem', maxHeight: '3.5em', overflowY: 'auto', overflowX: 'auto', whiteSpace: 'pre' }}>
+                                                {log.details ? Object.entries(log.details).map(([k, v]) =>
+                                                    <span key={k} style={{ marginRight: '0.8rem' }}>
+                                                        <span className="text-muted">{k}:</span> {String(v)}
+                                                    </span>
+                                                ) : '—'}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+
+                    {/* Pagination */}
+                    {totalLogs > LOG_LIMIT && (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                            <button
+                                className="btn btn-ghost btn-sm"
+                                disabled={logPage === 0}
+                                onClick={() => fetchLogs(0)}
+                            >« First</button>
+                            <button
+                                className="btn btn-ghost btn-sm"
+                                disabled={logPage === 0}
+                                onClick={() => fetchLogs(logPage - 1)}
+                            >‹ Prev</button>
+                            <span style={{ fontSize: '0.82rem', padding: '0 0.75rem' }}>
+                                Page {logPage + 1} of {Math.ceil(totalLogs / LOG_LIMIT)}
+                            </span>
+                            <button
+                                className="btn btn-ghost btn-sm"
+                                disabled={(logPage + 1) * LOG_LIMIT >= totalLogs}
+                                onClick={() => fetchLogs(logPage + 1)}
+                            >Next ›</button>
+                            <button
+                                className="btn btn-ghost btn-sm"
+                                disabled={(logPage + 1) * LOG_LIMIT >= totalLogs}
+                                onClick={() => fetchLogs(Math.ceil(totalLogs / LOG_LIMIT) - 1)}
+                            >Last »</button>
+                        </div>
+                    )}
                 </div>
             )}
 
