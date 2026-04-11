@@ -81,8 +81,8 @@ Secure-Job-Portal/
 |-------|----------|--------|-------------|
 | **M1** | Feb 13 | ✅ Done | Tech stack, HTTPS, skeleton deployment |
 | **M2** | Feb 27 | ✅ Done | Auth, TOTP 2FA, profiles, resume encryption, admin |
-| **M3** | Mar 31 | 🔜 Next | Company pages, job postings, search, messaging |
-| **M4** | Apr 30 | ⏳ Planned | PKI, virtual keyboard OTP, tamper-evident logs, attack demos |
+| **M3** | Mar 31 | ✅ Done | Company pages, job postings, search, messaging |
+| **M4** | Apr 30 | ✅ Done | PKI, virtual keyboard OTP, tamper-evident logs, attack demos |
 
 ## Quick Start
 
