@@ -4,7 +4,7 @@ Utility helpers used across the application.
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import Request
 from sqlalchemy.orm import Session as DBSession
