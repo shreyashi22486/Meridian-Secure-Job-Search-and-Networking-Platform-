@@ -25,6 +25,13 @@ export default function JobDetail() {
     const [editForm, setEditForm] = useState({});
     const [updating, setUpdating] = useState(false);
 
+    // Custom confirmation modal state
+    const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', style: 'warning', onConfirm: null });
+    const showConfirm = (title, message, onConfirm, style = 'warning') => {
+        setConfirmModal({ show: true, title, message, style, onConfirm });
+    };
+    const closeConfirm = () => setConfirmModal({ show: false, title: '', message: '', style: 'warning', onConfirm: null });
+
     // Only the person who posted the job can edit it
     const isJobPoster = job && user && user.id === job.posted_by;
     const canEditJob = isJobPoster;
@@ -314,15 +321,20 @@ export default function JobDetail() {
                             <button
                                 className="btn btn-ghost btn-full"
                                 style={{ marginTop: '0.5rem', color: 'var(--warning)' }}
-                                onClick={async () => {
-                                    if (!window.confirm('Close this job? No new applications will be accepted.')) return;
-                                    try {
-                                        const { data } = await jobApi.update(id, { is_active: false });
-                                        setJob(data);
-                                    } catch (err) {
-                                        setError(err.response?.data?.detail || 'Failed to close job');
-                                    }
-                                }}
+                                onClick={() => showConfirm(
+                                    'Close Job',
+                                    'Are you sure you want to close this job? No new applications will be accepted.',
+                                    async () => {
+                                        try {
+                                            const { data } = await jobApi.update(id, { is_active: false });
+                                            setJob(data);
+                                        } catch (err) {
+                                            setError(err.response?.data?.detail || 'Failed to close job');
+                                        }
+                                        closeConfirm();
+                                    },
+                                    'warning'
+                                )}
                             >
                                 <Icon name="lock" size={14} /> Close Job
                             </button>
@@ -355,15 +367,20 @@ export default function JobDetail() {
                             <button
                                 className="btn btn-danger btn-full"
                                 style={{ marginTop: '0.5rem' }}
-                                onClick={async () => {
-                                    if (!window.confirm('Are you sure you want to delete this job posting? This action cannot be undone.')) return;
-                                    try {
-                                        await jobApi.remove(id);
-                                        navigate('/jobs');
-                                    } catch (err) {
-                                        setError(err.response?.data?.detail || 'Failed to delete job');
-                                    }
-                                }}
+                                onClick={() => showConfirm(
+                                    'Delete Job',
+                                    'Are you sure you want to delete this job posting? This action cannot be undone.',
+                                    async () => {
+                                        try {
+                                            await jobApi.remove(id);
+                                            navigate('/jobs');
+                                        } catch (err) {
+                                            setError(err.response?.data?.detail || 'Failed to delete job');
+                                        }
+                                        closeConfirm();
+                                    },
+                                    'danger'
+                                )}
                             >
                                 <Icon name="trash" size={14} /> Delete Job
                             </button>
@@ -441,6 +458,64 @@ export default function JobDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Custom Confirmation Modal */}
+            {confirmModal.show && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 9999,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(6px)',
+                    animation: 'fadeIn 0.2s ease'
+                }} onClick={closeConfirm}>
+                    <div style={{
+                        background: 'var(--glass-bg, rgba(30, 30, 60, 0.92))',
+                        border: '1px solid var(--glass-border, rgba(255,255,255,0.08))',
+                        borderRadius: '16px', padding: '2rem', maxWidth: '420px', width: '90%',
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                        animation: 'slideUp 0.25s ease'
+                    }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{
+                                width: '40px', height: '40px', borderRadius: '12px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: confirmModal.style === 'danger'
+                                    ? 'rgba(255, 80, 80, 0.15)' : 'rgba(255, 180, 50, 0.15)',
+                                fontSize: '1.2rem'
+                            }}>
+                                {confirmModal.style === 'danger' ? '🗑️' : '⚠️'}
+                            </div>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{confirmModal.title}</h3>
+                        </div>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6, margin: '0 0 1.5rem' }}>
+                            {confirmModal.message}
+                        </p>
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                            <button
+                                className="btn btn-ghost"
+                                onClick={closeConfirm}
+                                style={{ padding: '0.5rem 1.25rem' }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className={confirmModal.style === 'danger' ? 'btn btn-danger' : 'btn btn-primary'}
+                                onClick={confirmModal.onConfirm}
+                                style={{
+                                    padding: '0.5rem 1.25rem',
+                                    ...(confirmModal.style === 'warning' ? { background: 'var(--warning)', color: '#000' } : {})
+                                }}
+                            >
+                                {confirmModal.style === 'danger' ? 'Delete' : 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+            `}</style>
         </div>
     );
 }
