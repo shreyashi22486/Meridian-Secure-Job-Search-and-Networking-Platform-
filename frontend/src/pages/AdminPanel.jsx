@@ -240,7 +240,7 @@ export default function AdminPanel() {
                                 <tr>
                                     <th>Time</th>
                                     <th>Action</th>
-                                    <th>User ID</th>
+                                    <th>User</th>
                                     <th>IP</th>
                                     <th>Hash</th>
                                     <th style={{ textAlign: 'center' }}>Sig</th>
@@ -259,8 +259,8 @@ export default function AdminPanel() {
                                         </td>
                                         <td><span className="badge badge-action" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>{log.action}</span></td>
                                         <td>
-                                            <div className="mono" style={{ fontSize: '0.72rem', overflowX: 'auto', whiteSpace: 'nowrap' }}>
-                                                {log.user_id || '—'}
+                                            <div style={{ fontSize: '0.72rem', overflowX: 'auto', whiteSpace: 'nowrap' }} title={log.user_id || ''}>
+                                                {log.user_email || (log.user_id ? log.user_id.slice(0, 8) + '…' : '—')}
                                             </div>
                                         </td>
                                         <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.ip_address || '—'}</td>

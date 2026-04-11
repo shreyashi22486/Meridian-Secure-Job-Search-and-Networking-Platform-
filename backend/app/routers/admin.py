@@ -268,14 +268,46 @@ async def get_audit_logs(
     total = query.count()
     logs = query.order_by(AuditLog.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
+    # ── Resolve user UUIDs → emails ──
+    import re
+    _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
+
+    # Collect every UUID-like string from user_id + details values
+    all_uuids: set[str] = set()
+    for log in logs:
+        if log.user_id:
+            all_uuids.add(str(log.user_id))
+        if log.details and isinstance(log.details, dict):
+            for v in log.details.values():
+                if isinstance(v, str) and _UUID_RE.match(v):
+                    all_uuids.add(v)
+
+    # Batch-query emails for all collected UUIDs
+    email_map: dict[str, str] = {}
+    if all_uuids:
+        rows = db.query(User.id, User.email).filter(User.id.in_(list(all_uuids))).all()
+        email_map = {str(r.id): r.email for r in rows}
+
+    def _enrich_details(details: dict | None) -> dict | None:
+        """Replace UUID values in details with 'email (uuid)' where resolvable."""
+        if not details or not isinstance(details, dict):
+            return details
+        enriched = {}
+        for k, v in details.items():
+            if isinstance(v, str) and _UUID_RE.match(v) and v in email_map:
+                enriched[k] = f"{email_map[v]}"
+            else:
+                enriched[k] = v
+        return enriched
+
     return {
         "logs": [
             {
                 "id": log.id,
-                "user_id": str(log.user_id) if log.user_id else None,
+                "user_id": email_map.get(str(log.user_id), str(log.user_id)) if log.user_id else None,
                 "action": log.action,
                 "ip_address": log.ip_address,
-                "details": log.details,
+                "details": _enrich_details(log.details),
                 "created_at": log.created_at.isoformat() + "Z",
                 "prev_hash": log.prev_hash,
                 "entry_hash": log.entry_hash,
