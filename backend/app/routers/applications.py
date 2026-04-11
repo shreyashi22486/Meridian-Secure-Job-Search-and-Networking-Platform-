@@ -90,6 +90,12 @@ async def apply_to_job(
     if not job.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This job is no longer accepting applications")
 
+    # Check if application deadline has passed
+    if job.application_deadline:
+        from datetime import datetime, timezone
+        if datetime.now(timezone.utc) > job.application_deadline.replace(tzinfo=timezone.utc):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The application deadline for this job has passed")
+
     # Check for duplicate application
     existing = db.query(Application).filter(
         Application.job_id == data.job_id,

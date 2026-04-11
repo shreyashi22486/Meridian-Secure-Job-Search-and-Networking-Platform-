@@ -64,8 +64,9 @@ def log_audit(
     prev_entry = db.query(AuditLog).order_by(AuditLog.id.desc()).first()
     prev_hash = prev_entry.entry_hash if (prev_entry and prev_entry.entry_hash) else "0" * 64
 
-    # Use a consistent timestamp format for hashing
-    timestamp = _format_ts(datetime.now(timezone.utc))
+    # Capture exact timestamp for both hashing and storage
+    now = datetime.utcnow()
+    timestamp = _format_ts(now)
 
     # Compute this entry's hash
     entry_hash = _compute_entry_hash(
@@ -91,6 +92,7 @@ def log_audit(
         prev_hash=prev_hash,
         entry_hash=entry_hash,
         signature=signature,
+        created_at=now,
     )
     db.add(entry)
     db.commit()

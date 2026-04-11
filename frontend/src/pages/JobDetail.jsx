@@ -29,6 +29,9 @@ export default function JobDetail() {
     const isJobPoster = job && user && user.id === job.posted_by;
     const canEditJob = isJobPoster;
 
+    // Check if application deadline has passed
+    const deadlinePassed = job?.application_deadline && new Date(job.application_deadline) < new Date();
+
     useEffect(() => {
         const fetchJob = async () => {
             try {
@@ -264,7 +267,7 @@ export default function JobDetail() {
                                 <p style={{ fontWeight: 600, color: 'var(--success)', marginBottom: '0.25rem' }}>Applied!</p>
                                 <Link to="/applications" style={{ fontSize: '0.85rem' }}>Track your application →</Link>
                             </div>
-                        ) : user && job.is_active && user.id !== job.posted_by ? (
+                        ) : user && job.is_active && !deadlinePassed && user.id !== job.posted_by ? (
                             <button className="btn btn-primary btn-full btn-lg" onClick={handleOpenApply}>
                                 <Icon name="arrowRight" size={16} /> Apply Now
                             </button>
@@ -276,6 +279,10 @@ export default function JobDetail() {
                             <div className="text-muted" style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.5rem' }}>
                                 You posted this job
                             </div>
+                        ) : deadlinePassed && job.is_active ? (
+                            <button className="btn btn-ghost btn-full" disabled>
+                                <Icon name="clock" size={14} /> Deadline Passed
+                            </button>
                         ) : (
                             <button className="btn btn-ghost btn-full" disabled>Applications Closed</button>
                         )}
@@ -300,6 +307,41 @@ export default function JobDetail() {
                                 }}
                             >
                                 <Icon name="edit" size={14} /> Edit Job
+                            </button>
+                        )}
+
+                        {isJobPoster && job.is_active && (
+                            <button
+                                className="btn btn-ghost btn-full"
+                                style={{ marginTop: '0.5rem', color: 'var(--warning)' }}
+                                onClick={async () => {
+                                    if (!window.confirm('Close this job? No new applications will be accepted.')) return;
+                                    try {
+                                        const { data } = await jobApi.update(id, { is_active: false });
+                                        setJob(data);
+                                    } catch (err) {
+                                        setError(err.response?.data?.detail || 'Failed to close job');
+                                    }
+                                }}
+                            >
+                                <Icon name="lock" size={14} /> Close Job
+                            </button>
+                        )}
+
+                        {isJobPoster && !job.is_active && (
+                            <button
+                                className="btn btn-ghost btn-full"
+                                style={{ marginTop: '0.5rem', color: 'var(--success)' }}
+                                onClick={async () => {
+                                    try {
+                                        const { data } = await jobApi.update(id, { is_active: true });
+                                        setJob(data);
+                                    } catch (err) {
+                                        setError(err.response?.data?.detail || 'Failed to reopen job');
+                                    }
+                                }}
+                            >
+                                <Icon name="arrowRight" size={14} /> Reopen Job
                             </button>
                         )}
 
