@@ -164,6 +164,7 @@ export const jobApi = {
     get: (id) => api.get(`/jobs/${id}`),
     update: (id, data) => api.put(`/jobs/${id}`, data),
     remove: (id) => api.delete(`/jobs/${id}`),
+    recommended: () => api.get('/jobs/recommended'),
 };
 
 // ─── Applications ─────────────────────────────────────────────────────

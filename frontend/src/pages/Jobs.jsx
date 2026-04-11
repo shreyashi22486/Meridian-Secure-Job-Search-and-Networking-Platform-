@@ -21,6 +21,11 @@ export default function Jobs() {
     const [page, setPage] = useState(0);
     const limit = 12;
 
+    // Recommended jobs
+    const [recJobs, setRecJobs] = useState([]);
+    const [recLoading, setRecLoading] = useState(false);
+    const [userSkills, setUserSkills] = useState([]);
+
     const fetchJobs = async (skip = 0) => {
         setLoading(true);
         try {
@@ -42,6 +47,21 @@ export default function Jobs() {
     };
 
     useEffect(() => { fetchJobs(page * limit); }, [page]);
+
+    // Fetch recommended jobs for logged-in users
+    useEffect(() => {
+        if (!user) return;
+        const fetchRec = async () => {
+            setRecLoading(true);
+            try {
+                const { data } = await jobApi.recommended();
+                setRecJobs(data.jobs || []);
+                setUserSkills(data.user_skills || []);
+            } catch { /* ignore if not logged in */ }
+            finally { setRecLoading(false); }
+        };
+        fetchRec();
+    }, [user]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -144,6 +164,86 @@ export default function Jobs() {
                     )}
                 </div>
             </form>
+
+            {/* Recommended for You */}
+            {user && recJobs.length > 0 && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                        <h2 style={{ margin: 0, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '1.2rem' }}>✨</span> Recommended for You
+                            <span className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 400 }}>
+                                Based on your resume skills
+                            </span>
+                        </h2>
+                        {userSkills.length > 0 && (
+                            <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                {userSkills.length} skill{userSkills.length !== 1 ? 's' : ''} detected
+                            </span>
+                        )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                        {recJobs.slice(0, 8).map((job) => (
+                            <Link
+                                key={job.id} to={`/jobs/${job.id}`}
+                                className="glass-card"
+                                style={{
+                                    textDecoration: 'none', minWidth: '300px', maxWidth: '340px', flex: '0 0 auto',
+                                    display: 'flex', flexDirection: 'column', gap: '0.5rem',
+                                    borderColor: job.match_percent >= 70 ? 'rgba(80, 200, 120, 0.3)'
+                                        : job.match_percent >= 40 ? 'rgba(255, 180, 50, 0.3)'
+                                        : 'rgba(255, 255, 255, 0.06)',
+                                    transition: 'transform 0.2s, border-color 0.2s',
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <h3 style={{ marginBottom: '0.2rem', fontSize: '0.95rem', color: 'var(--text-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</h3>
+                                        <p className="text-muted" style={{ fontSize: '0.8rem', margin: 0 }}>
+                                            <Icon name="building" size={12} /> {job.company_name}
+                                        </p>
+                                    </div>
+                                    <span style={{
+                                        padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,
+                                        whiteSpace: 'nowrap', marginLeft: '0.5rem',
+                                        background: job.match_percent >= 70 ? 'rgba(80, 200, 120, 0.15)'
+                                            : job.match_percent >= 40 ? 'rgba(255, 180, 50, 0.15)'
+                                            : 'rgba(255, 100, 100, 0.15)',
+                                        color: job.match_percent >= 70 ? '#50c878'
+                                            : job.match_percent >= 40 ? '#ffb432'
+                                            : '#ff6464',
+                                    }}>
+                                        {job.match_percent}% match
+                                    </span>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                    {(job.matched_skills || []).slice(0, 5).map((s, i) => (
+                                        <span key={i} style={{
+                                            padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.68rem',
+                                            background: 'rgba(80, 200, 120, 0.12)', color: '#50c878', fontWeight: 500,
+                                        }}>✓ {s}</span>
+                                    ))}
+                                    {(job.matched_skills || []).length > 5 && (
+                                        <span className="text-muted" style={{ fontSize: '0.68rem' }}>+{job.matched_skills.length - 5}</span>
+                                    )}
+                                </div>
+
+                                {formatSalary(job.salary_min, job.salary_max) && (
+                                    <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--success)', margin: 0 }}>
+                                        {formatSalary(job.salary_min, job.salary_max)}
+                                    </p>
+                                )}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
+            {user && recLoading && (
+                <div className="glass-card" style={{ marginBottom: '1.5rem', textAlign: 'center', padding: '1rem' }}>
+                    <div className="spinner" style={{ margin: '0 auto' }} />
+                    <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Finding jobs matching your skills...</p>
+                </div>
+            )}
 
             {error && <div className="alert alert-error">{error}</div>}
 

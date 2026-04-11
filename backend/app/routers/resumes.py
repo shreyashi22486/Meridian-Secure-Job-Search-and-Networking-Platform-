@@ -25,6 +25,7 @@ from app.security.pki import sign_data, verify_signature
 from app.security.totp import verify_totp
 from app.dependencies import get_current_user
 from app.utils import get_client_ip, log_audit
+from app.security.resume_parser import parse_resume
 from app.config import settings
 
 router = APIRouter(prefix="/api/resumes", tags=["Resumes"])
@@ -99,7 +100,13 @@ async def upload_resume(
     except Exception:
         file_signature = None
 
-    # 5. Save metadata
+    # 5. Parse resume to extract skills (in-memory, never written to disk)
+    try:
+        extracted_skills = parse_resume(validated_content)
+    except Exception:
+        extracted_skills = []  # Don't block upload if parsing fails
+
+    # 6. Save metadata
     resume = Resume(
         user_id=current_user.id,
         original_filename=file.filename or "resume.pdf",
@@ -108,6 +115,7 @@ async def upload_resume(
         file_size=len(validated_content),  # Original size
         encryption_key_id="v1",
         signature=file_signature,
+        extracted_skills=extracted_skills,
     )
     db.add(resume)
     db.commit()
@@ -116,7 +124,8 @@ async def upload_resume(
     log_audit(db, "resume_uploaded", user_id=current_user.id,
               ip_address=client_ip,
               details={"resume_id": str(resume.id), "original_name": file.filename,
-                       "signed": file_signature is not None})
+                       "signed": file_signature is not None,
+                       "skills_extracted": len(extracted_skills)})
 
     return ResumeResponse(
         id=str(resume.id),

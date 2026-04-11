@@ -10,7 +10,7 @@ Security features:
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Text, Integer, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -36,6 +36,9 @@ class Resume(Base):
 
     # PKI digital signature — tamper detection
     signature = Column(Text, nullable=True)
+
+    # Parsed skills extracted from resume content
+    extracted_skills = Column(JSONB, nullable=True, default=list)
 
     # Timestamps
     uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)

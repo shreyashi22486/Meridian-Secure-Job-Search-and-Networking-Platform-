@@ -207,6 +207,64 @@ async def search_jobs(
     )
 
 
+@router.get("/recommended")
+async def recommended_jobs(
+    limit: int = 20,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return active jobs ranked by skill match against the user's resume skills.
+
+    Algorithm:
+    1. Collect all extracted_skills from the user's resumes (union)
+    2. Fetch all active jobs with required_skills
+    3. Compute match_percent = (matched / total_required) * 100
+    4. Return sorted by match_percent descending (only jobs with > 0% match)
+    """
+    from app.models.resume import Resume
+
+    # 1. Gather user's skills from all their resumes
+    resumes = db.query(Resume).filter(Resume.user_id == current_user.id).all()
+    user_skills: set[str] = set()
+    for r in resumes:
+        if r.extracted_skills:
+            user_skills.update(s.lower() for s in r.extracted_skills)
+
+    if not user_skills:
+        return {"jobs": [], "user_skills": [], "total": 0}
+
+    # 2. Fetch all active jobs that have required_skills
+    jobs = db.query(Job).filter(
+        Job.is_active.is_(True),
+        Job.required_skills.isnot(None),
+    ).all()
+
+    # 3. Compute match scores
+    scored_jobs = []
+    for job in jobs:
+        required = [s.lower() for s in (job.required_skills or [])]
+        if not required:
+            continue
+        matched = [s for s in required if s in user_skills]
+        match_percent = round(len(matched) / len(required) * 100)
+        if match_percent > 0:
+            job_data = _job_response(job).model_dump()
+            job_data["match_percent"] = match_percent
+            job_data["matched_skills"] = matched
+            job_data["total_required"] = len(required)
+            scored_jobs.append(job_data)
+
+    # 4. Sort by match_percent descending
+    scored_jobs.sort(key=lambda x: x["match_percent"], reverse=True)
+
+    return {
+        "jobs": scored_jobs[:limit],
+        "user_skills": sorted(user_skills),
+        "total": len(scored_jobs),
+    }
+
+
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
     job_id: str,
