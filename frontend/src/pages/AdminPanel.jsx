@@ -18,6 +18,14 @@ export default function AdminPanel() {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [chainStatus, setChainStatus] = useState(null);
     const [verifying, setVerifying] = useState(false);
+
+    // Blockchain state
+    const [blocks, setBlocks] = useState([]);
+    const [bcLoading, setBcLoading] = useState(false);
+    const [bcVerify, setBcVerify] = useState(null);
+    const [cpVerify, setCpVerify] = useState(null);
+    const [selectedBlock, setSelectedBlock] = useState(null);
+
     const toast = useToast();
     const confirm = useConfirm();
 
@@ -44,6 +52,15 @@ export default function AdminPanel() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { fetchUsers(); fetchLogs(); }, []);
+
+    const fetchBlocks = async () => {
+        setBcLoading(true);
+        try {
+            const { data } = await adminApi.listBlocks();
+            setBlocks(data.blocks || []);
+        } catch { toast.error('Failed to load blockchain'); }
+        finally { setBcLoading(false); }
+    };
 
     const handleRoleChange = async (userId, currentRole, newRole) => {
         if (currentRole === newRole) return;
@@ -152,6 +169,10 @@ export default function AdminPanel() {
                 <button className={`tab ${activeTab === 'logs' ? 'tab-active' : ''}`}
                     onClick={() => setActiveTab('logs')}>
                     <Icon name="activity" size={15} /> Audit Logs
+                </button>
+                <button className={`tab ${activeTab === 'blockchain' ? 'tab-active' : ''}`}
+                    onClick={() => { setActiveTab('blockchain'); if (blocks.length === 0) fetchBlocks(); }}>
+                    <Icon name="lock" size={15} /> Blockchain
                 </button>
             </div>
 
@@ -329,6 +350,172 @@ export default function AdminPanel() {
                     onComplete={handleDeleteOtp}
                     onClose={() => setDeleteTarget(null)}
                 />
+            )}
+
+            {/* Blockchain Tab */}
+            {activeTab === 'blockchain' && (
+                <div>
+                    {/* Action Buttons */}
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+                        <button className="btn btn-primary btn-sm" onClick={async () => {
+                            try {
+                                const { data } = await adminApi.verifyBlockchain();
+                                setBcVerify(data);
+                                toast[data.valid ? 'success' : 'error'](data.message);
+                            } catch { toast.error('Verification failed'); }
+                        }}>
+                            <Icon name="shield" size={14} /> Verify Chain
+                        </button>
+                        <button className="btn btn-glass btn-sm" onClick={async () => {
+                            try {
+                                const { data } = await adminApi.verifyCheckpoints();
+                                setCpVerify(data);
+                                toast[data.valid ? 'success' : 'error'](data.message);
+                            } catch { toast.error('Checkpoint verification failed'); }
+                        }}>
+                            <Icon name="activity" size={14} /> Verify Checkpoints
+                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={async () => {
+                            try {
+                                const { data } = await adminApi.exportChain();
+                                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a'); a.href = url;
+                                a.download = `blockchain_export_${new Date().toISOString().slice(0,10)}.json`;
+                                a.click(); URL.revokeObjectURL(url);
+                                toast.success('Chain exported');
+                            } catch { toast.error('Export failed'); }
+                        }}>
+                            <Icon name="briefcase" size={14} /> Export Chain
+                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={fetchBlocks}>
+                            <Icon name="activity" size={14} /> Refresh
+                        </button>
+                    </div>
+
+                    {/* Verification Results */}
+                    {bcVerify && (
+                        <div className={`alert ${bcVerify.valid ? 'alert-success' : 'alert-error'}`} style={{ marginBottom: '1rem' }}>
+                            <strong>{bcVerify.valid ? '✓' : '✗'} {bcVerify.message}</strong>
+                            <span style={{ marginLeft: '1rem', fontSize: '0.85rem' }}>
+                                ({bcVerify.blocks_verified} blocks verified)
+                            </span>
+                        </div>
+                    )}
+                    {cpVerify && (
+                        <div className={`alert ${cpVerify.valid ? 'alert-success' : 'alert-error'}`} style={{ marginBottom: '1rem' }}>
+                            <strong>{cpVerify.valid ? '✓' : '✗'} {cpVerify.message}</strong>
+                            <span style={{ marginLeft: '1rem', fontSize: '0.85rem' }}>
+                                ({cpVerify.blocks_checked} checkpoints verified)
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Block Chain Visualization */}
+                    {bcLoading ? (
+                        <div className="empty-state"><div className="spinner" /></div>
+                    ) : blocks.length === 0 ? (
+                        <div className="glass-card empty-state">
+                            <h3>No blocks mined yet</h3>
+                            <p className="text-muted">Blocks are automatically mined every 10 audit log entries</p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '1rem', alignItems: 'stretch' }}>
+                            {blocks.map((block, idx) => (
+                                <div key={block.block_number} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
+                                    <div
+                                        className="glass-card"
+                                        onClick={async () => {
+                                            try {
+                                                const { data } = await adminApi.getBlock(block.block_number);
+                                                setSelectedBlock(data);
+                                            } catch { toast.error('Failed to load block'); }
+                                        }}
+                                        style={{
+                                            cursor: 'pointer', minWidth: '200px', padding: '1rem',
+                                            borderColor: block.block_number === 0 ? 'rgba(100, 200, 255, 0.3)' : 'rgba(80, 200, 120, 0.2)',
+                                            transition: 'transform 0.2s, border-color 0.2s',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                                                {block.block_number === 0 ? '🏁 Genesis' : `⛏️ Block #${block.block_number}`}
+                                            </span>
+                                            <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>
+                                                {block.entry_count} txns
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: 'var(--text-muted)', lineHeight: 1.8 }}>
+                                            <div title={block.block_hash}>🔗 {block.block_hash.slice(0, 16)}...</div>
+                                            <div title={block.merkle_root}>🌳 {block.merkle_root.slice(0, 16)}...</div>
+                                            <div>⚙️ Nonce: {block.nonce} | Diff: {block.difficulty}</div>
+                                        </div>
+                                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                                            {new Date(block.created_at).toLocaleString()}
+                                        </div>
+                                    </div>
+                                    {idx < blocks.length - 1 && (
+                                        <div style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 700 }}>→</div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Selected Block Detail */}
+                    {selectedBlock && (
+                        <div className="glass-card" style={{ marginTop: '1rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <h3 style={{ margin: 0 }}>
+                                    {selectedBlock.block_number === 0 ? '🏁 Genesis Block' : `⛏️ Block #${selectedBlock.block_number}`}
+                                </h3>
+                                <button className="btn btn-ghost btn-xs" onClick={() => setSelectedBlock(null)}>
+                                    <Icon name="x" size={14} />
+                                </button>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem', fontSize: '0.82rem' }}>
+                                <div className="glass-card" style={{ padding: '0.75rem' }}>
+                                    <div className="text-muted" style={{ fontSize: '0.72rem', marginBottom: '0.25rem' }}>Block Hash</div>
+                                    <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', fontSize: '0.75rem' }}>{selectedBlock.block_hash}</div>
+                                </div>
+                                <div className="glass-card" style={{ padding: '0.75rem' }}>
+                                    <div className="text-muted" style={{ fontSize: '0.72rem', marginBottom: '0.25rem' }}>Previous Block Hash</div>
+                                    <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', fontSize: '0.75rem' }}>{selectedBlock.prev_block_hash}</div>
+                                </div>
+                                <div className="glass-card" style={{ padding: '0.75rem' }}>
+                                    <div className="text-muted" style={{ fontSize: '0.72rem', marginBottom: '0.25rem' }}>Merkle Root</div>
+                                    <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', fontSize: '0.75rem' }}>{selectedBlock.merkle_root}</div>
+                                </div>
+                                <div className="glass-card" style={{ padding: '0.75rem' }}>
+                                    <div className="text-muted" style={{ fontSize: '0.72rem', marginBottom: '0.25rem' }}>Mining Details</div>
+                                    <div>Nonce: <strong>{selectedBlock.nonce}</strong> | Difficulty: <strong>{selectedBlock.difficulty}</strong></div>
+                                </div>
+                            </div>
+                            {selectedBlock.entries?.length > 0 && (
+                                <div style={{ marginTop: '1rem' }}>
+                                    <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Transactions in Block</h4>
+                                    <div className="table-container" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                                        <table className="data-table" style={{ fontSize: '0.78rem' }}>
+                                            <thead>
+                                                <tr><th>ID</th><th>Action</th><th>Entry Hash</th><th>Time</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                {selectedBlock.entries.map(e => (
+                                                    <tr key={e.id}>
+                                                        <td>{e.id}</td>
+                                                        <td>{e.action}</td>
+                                                        <td style={{ fontFamily: 'monospace', fontSize: '0.7rem' }}>{e.entry_hash?.slice(0, 16)}...</td>
+                                                        <td>{new Date(e.created_at).toLocaleString()}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     );

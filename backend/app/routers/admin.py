@@ -385,3 +385,112 @@ async def verify_audit_log_integrity(
         "broken_at": broken_at,
         "message": "Chain integrity verified" if broken_at is None else f"Tamper detected at entry #{broken_at}",
     }
+
+
+# ─── Blockchain Endpoints ──────────────────────────────────────────────
+
+
+@router.get("/blockchain")
+async def list_blocks(
+    db: DBSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """List all blocks in the blockchain."""
+    from app.models.blockchain import Block
+
+    blocks = db.query(Block).order_by(Block.block_number.asc()).all()
+    return {
+        "blocks": [
+            {
+                "block_number": b.block_number,
+                "prev_block_hash": b.prev_block_hash,
+                "merkle_root": b.merkle_root,
+                "nonce": b.nonce,
+                "difficulty": b.difficulty,
+                "block_hash": b.block_hash,
+                "entry_count": b.entry_count,
+                "entry_ids": b.entry_ids,
+                "signature": b.signature[:16] + "..." if b.signature else None,
+                "created_at": b.created_at.isoformat() + "Z",
+            }
+            for b in blocks
+        ],
+        "total": len(blocks),
+    }
+
+
+@router.get("/blockchain/verify")
+async def verify_blockchain_endpoint(
+    db: DBSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Full blockchain verification — chain linkage, Merkle roots, PoW, signatures."""
+    from app.security.blockchain import verify_blockchain
+    return verify_blockchain(db)
+
+
+@router.get("/blockchain/verify-checkpoints")
+async def verify_checkpoints_endpoint(
+    db: DBSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Cross-verify database blocks against checkpoint files on disk."""
+    from app.security.blockchain import verify_checkpoints
+    return verify_checkpoints(db)
+
+
+@router.get("/blockchain/export")
+async def export_chain_endpoint(
+    db: DBSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Export entire blockchain as signed JSON for independent verification."""
+    from app.security.blockchain import export_chain
+    return export_chain(db)
+
+
+@router.get("/blockchain/block/{block_number}")
+async def get_block_detail(
+    block_number: int,
+    db: DBSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Get detailed info about a specific block, including its entries."""
+    from app.models.blockchain import Block
+
+    block = db.query(Block).filter(Block.block_number == block_number).first()
+    if not block:
+        raise HTTPException(status_code=404, detail="Block not found")
+
+    # Get entries in this block
+    entries = []
+    if block.entry_ids:
+        logs = (
+            db.query(AuditLog)
+            .filter(AuditLog.id.in_(block.entry_ids))
+            .order_by(AuditLog.id.asc())
+            .all()
+        )
+        entries = [
+            {
+                "id": log.id,
+                "action": log.action,
+                "user_id": str(log.user_id) if log.user_id else None,
+                "entry_hash": log.entry_hash,
+                "created_at": log.created_at.isoformat() + "Z",
+            }
+            for log in logs
+        ]
+
+    return {
+        "block_number": block.block_number,
+        "prev_block_hash": block.prev_block_hash,
+        "merkle_root": block.merkle_root,
+        "nonce": block.nonce,
+        "difficulty": block.difficulty,
+        "block_hash": block.block_hash,
+        "entry_count": block.entry_count,
+        "signature": block.signature,
+        "created_at": block.created_at.isoformat() + "Z",
+        "entries": entries,
+    }

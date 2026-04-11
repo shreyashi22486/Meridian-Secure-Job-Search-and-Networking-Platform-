@@ -97,6 +97,13 @@ def log_audit(
     db.add(entry)
     db.commit()
 
+    # Auto-mine a new block if enough entries have accumulated
+    try:
+        from app.security.blockchain import maybe_create_block
+        maybe_create_block(db)
+    except Exception:
+        pass  # Don't block logging if blockchain mining fails
+
 
 def backfill_audit_hashes(db: DBSession) -> int:
     """

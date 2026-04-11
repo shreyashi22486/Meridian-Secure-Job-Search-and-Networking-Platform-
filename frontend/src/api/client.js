@@ -142,6 +142,12 @@ export const adminApi = {
     }),
     auditLogs: (params) => api.get('/admin/audit-logs', { params }),
     verifyAuditLogs: () => api.get('/admin/audit-logs/verify'),
+    // Blockchain
+    listBlocks: () => api.get('/admin/blockchain'),
+    verifyBlockchain: () => api.get('/admin/blockchain/verify'),
+    verifyCheckpoints: () => api.get('/admin/blockchain/verify-checkpoints'),
+    exportChain: () => api.get('/admin/blockchain/export'),
+    getBlock: (num) => api.get(`/admin/blockchain/block/${num}`),
 };
 
 // ─── Companies ────────────────────────────────────────────────────────────
