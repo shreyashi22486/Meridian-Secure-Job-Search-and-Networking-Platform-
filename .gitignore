@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.egg-info/
 *.egg
-dist/
 build/
 *.whl
 .Python
@@ -23,7 +22,6 @@ backend/.env
 # ─── Node / Frontend ────────────────────────────────────────────────────
 node_modules/
 frontend/node_modules/
-frontend/dist/
 frontend/.vite/
 frontend/node_modules.tar
 npm-debug.log*
