@@ -1,5 +1,6 @@
 # ─────────────────────────────────────────────────────────────────────────
-# Meridian CD — Build, Push & Deploy
+# Secure Job Portal CD — Build & Push Images to GHCR
+# Server auto-deploys via cron (pull-based, no SSH needed for LAN)
 # ─────────────────────────────────────────────────────────────────────────
 name: CD
 
@@ -96,5 +97,13 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  # After images are pushed, deploy manually on the server:
-  #   cd /opt/meridian && ./deploy.sh
+  # ─────────────────────────────────────────────────────────────────────
+  # NOTE: Auto-deploy is handled on the server via cron + auto-deploy.sh
+  # Since the server is on a college LAN (192.168.2.233), GitHub Actions
+  # cannot SSH into it. Instead, the server polls for new commits every
+  # 2 minutes and auto-deploys when changes are detected.
+  #
+  # Setup on server:
+  #   crontab -e
+  #   */2 * * * * /home/iiitd/Secure-Job-Portal/auto-deploy.sh >> /var/log/sjp-autodeploy.log 2>&1
+  # ─────────────────────────────────────────────────────────────────────

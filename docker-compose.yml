@@ -1,10 +1,12 @@
 # ─────────────────────────────────────────────────────────────────────────
-# Secure Job Portal — Production Deployment (Pre-built Images from GHCR)
-# No local builds — pulls images pushed by the CD pipeline.
+# Secure Job Portal — Docker Compose (Server Deployment)
+# Replaces start_servers.sh / nohup-based deployment
 #
 # Usage:
-#   docker compose -f docker-compose.prod.yml up -d
-#   docker compose -f docker-compose.prod.yml pull   # Pull latest images
+#   docker compose up --build -d          # Build & start everything
+#   docker compose logs -f                # Follow logs
+#   docker compose down                   # Stop everything
+#   docker compose ps                     # Check status
 # ─────────────────────────────────────────────────────────────────────────
 
 services:
@@ -28,13 +30,15 @@ services:
     networks:
       - sjp-network
 
-  # ── Backend (Pre-built from GHCR) ─────────────────────────────────
+  # ── Backend (FastAPI + Uvicorn) ────────────────────────────────────
   backend:
-    image: ghcr.io/angadjeet/secure-job-portal/backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: sjp-backend
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-secure_job_portal}
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production-please-1234567890abcdef}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       REFRESH_TOKEN_EXPIRE_MINUTES: ${REFRESH_TOKEN_EXPIRE_MINUTES:-1440}
@@ -45,9 +49,9 @@ services:
       AVATAR_DIR: ./data/avatars
       PKI_KEY_DIR: ./data/pki
       MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-2097152}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://192.168.2.233}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://192.168.2.233,http://localhost}
       APP_NAME: ${APP_NAME:-Secure Job Portal}
-      DEBUG: "false"
+      DEBUG: ${DEBUG:-false}
     volumes:
       - resume_data:/app/data/resumes
       - avatar_data:/app/data/avatars
@@ -67,14 +71,17 @@ services:
     networks:
       - sjp-network
 
-  # ── Frontend (Pre-built from GHCR — Nginx + static files) ─────────
+  # ── Frontend (Nginx + Static Build) ───────────────────────────────
   frontend:
-    image: ghcr.io/angadjeet/secure-job-portal/frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: sjp-frontend
     ports:
       - "80:80"
       - "443:443"
     volumes:
+      # Mount SSL certs if you have them; comment out if HTTP-only
       - ./ssl:/etc/nginx/ssl:ro
     depends_on:
       backend:

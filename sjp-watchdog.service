@@ -1,0 +1,23 @@
+[Unit]
+Description=Secure Job Portal — Watchdog Health Monitor
+Documentation=https://github.com/angadjeet/Secure-Job-Portal
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/iiitd/Secure-Job-Portal
+ExecStart=/home/iiitd/Secure-Job-Portal/watchdog.sh
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/sjp-watchdog.log
+StandardError=append:/var/log/sjp-watchdog.log
+
+# Hardening
+NoNewPrivileges=false
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

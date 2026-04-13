@@ -1,12 +1,13 @@
 # ─────────────────────────────────────────────────────────────────────────
-# Nexora — Local Development with Docker Compose
-# Usage:  docker compose up --build
+# Secure Job Portal — Local Development with Docker Compose
+# Usage:  docker compose -f docker-compose.local.yml up --build
 # ─────────────────────────────────────────────────────────────────────────
 
 services:
   # ── PostgreSQL ─────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
+    container_name: sjp-postgres-dev
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -14,51 +15,84 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_dev:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    networks:
+      - sjp-network-dev
 
   # ── Backend (FastAPI + Uvicorn) ────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: sjp-backend-dev
     ports:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-secure_job_portal}
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-not-for-production-1234567890abcdef}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       REFRESH_TOKEN_EXPIRE_MINUTES: ${REFRESH_TOKEN_EXPIRE_MINUTES:-1440}
       TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
       FILE_ENCRYPTION_KEY: ${FILE_ENCRYPTION_KEY}
+      FERNET_KEY: ${FERNET_KEY}
       UPLOAD_DIR: ./data/resumes
+      AVATAR_DIR: ./data/avatars
+      PKI_KEY_DIR: ./data/pki
       MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-2097152}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
-      APP_NAME: ${APP_NAME:-Nexora}
-      DEBUG: ${DEBUG:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost}
+      APP_NAME: ${APP_NAME:-Secure Job Portal}
+      DEBUG: ${DEBUG:-true}
     volumes:
-      - resume_data:/app/data/resumes
+      - resume_data_dev:/app/data/resumes
+      - avatar_data_dev:/app/data/avatars
+      - pki_data_dev:/app/data/pki
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
+    networks:
+      - sjp-network-dev
 
   # ── Frontend (Nginx) ──────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: sjp-frontend-dev
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
+    networks:
+      - sjp-network-dev
 
 volumes:
-  pgdata:
-  resume_data:
+  pgdata_dev:
+  resume_data_dev:
+  avatar_data_dev:
+  pki_data_dev:
+
+networks:
+  sjp-network-dev:
+    driver: bridge
