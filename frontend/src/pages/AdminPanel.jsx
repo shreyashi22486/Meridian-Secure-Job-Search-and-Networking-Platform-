@@ -282,7 +282,7 @@ export default function AdminPanel() {
                                         <td><span className="badge badge-action" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>{log.action}</span></td>
                                         <td>
                                             <div style={{ fontSize: '0.75rem', wordBreak: 'break-all' }} title={log.user_id || ''}>
-                                                {log.user_email || (log.user_id ? log.user_id : '—')}
+                                                {log.user_id || '—'}
                                             </div>
                                         </td>
                                         <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{log.ip_address || '—'}</td>

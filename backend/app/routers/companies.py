@@ -170,8 +170,8 @@ async def update_company(
             detail="Company not found",
         )
 
-    # Only the person who created the company can edit it
-    if str(company.created_by) != str(current_user.id):
+    # Platform admins can edit any company; otherwise only the creator can
+    if current_user.role.value != "admin" and str(company.created_by) != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the person who created this company can edit it",

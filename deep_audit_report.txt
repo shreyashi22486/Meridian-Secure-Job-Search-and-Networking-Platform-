@@ -1,0 +1,136 @@
+
+[0;31m[1m  🔓 DEEP SECURITY AUDIT — HONEST MODE[0m
+
+
+[0;36m[1m━━━ 1. SQL INJECTION (Testing actual ORM, not rate limiter) ━━━[0m
+  [0;32m[SECURE][0m SQLi auth bypass: ' OR 1=1 --
+           [0;32m↳ Rejected with HTTP 401 (ORM parameterized)[0m
+  [0;32m[SECURE][0m UNION SQLi in /jobs/ search
+           [0;32m↳ No data leak (HTTP 000)[0m
+  [0;32m[SECURE][0m Blind SQLi timing attack
+           [0;32m↳ Response in 119ms — no delay injection[0m
+
+[0;36m[1m━━━ 2. XSS — Testing actual sanitization ━━━[0m
+  [0;32m[SECURE][0m Stored XSS in registration name
+           [0;32m↳ Rejected by validation (HTTP 400)[0m
+
+  [1mChecking DB for stored XSS payloads:[0m
+  [0;32m[SECURE][0m XSS payload sanitized in database
+           [0;32m↳ DB stores: 'alert(XSS)'[0m
+
+[0;36m[1m━━━ 3. CSRF — Testing actual double-submit validation ━━━[0m
+  [1mGot CSRF token:[0m 43841dbe3865f53c1134...
+  [0;32m[SECURE][0m PUT without CSRF token blocked
+           [0;32m↳ 403 Forbidden — CSRF middleware working[0m
+  [0;32m[SECURE][0m PUT with forged CSRF token blocked
+           [0;32m↳ 403 — token mismatch caught[0m
+  [0;32m[SECURE][0m PUT with valid CSRF token succeeds
+           [0;32m↳ 200 — legitimate request works[0m
+
+[0;36m[1m━━━ 4. SESSION SECURITY — Cookie flags & token integrity ━━━[0m
+
+  [1mRaw Set-Cookie headers from login:[0m
+    < set-cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNTg1YjFhOC1hYzMzLTRhYmUtYTI0Zi02N2YzMGI0NmI1ZGMiLCJyb2xlIjoidXNlciIsInR5cGUiOiJhY2Nlc3MiLCJqdGkiOiIyZDcwZWQ5OC0yMzk1LTRlYjUtYTYxYi00NGI5MjQzZDNjNDQiLCJzaWQiOiI4OTMyY2Q4Mi0wOTQ3LTQzOTktYWMwOS0zOTU2MmFmNTkyMDUiLCJmcCI6ImY0Nzk1Mjk3NGMwMDJmMmU1NmZlNzJiOWE0MGE2YmY1YTRiZDNjZDVjZTJiMGM1MWMwODY0NjJiYWY2ZThhNTUiLCJpYXQiOjE3NzYwODAxMTEsImV4cCI6MTc3NjA4MTAxMX0.ILVsg9qusgGTUAd2gCw3YL-IiIn2NI0PCRP6UQD73e8; HttpOnly; Max-Age=900; Path=/; SameSite=lax
+    < set-cookie: refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNTg1YjFhOC1hYzMzLTRhYmUtYTI0Zi02N2YzMGI0NmI1ZGMiLCJ0eXBlIjoicmVmcmVzaCIsImp0aSI6Ijc3ZmViNmY4LWYzZmUtNDRhMS05OTNkLTFjZTE3ODE1ZTg5NyIsInNpZCI6Ijg5MzJjZDgyLTA5NDctNDM5OS1hYzA5LTM5NTYyYWY1OTIwNSIsImZwIjoiZjQ3OTUyOTc0YzAwMmYyZTU2ZmU3MmI5YTQwYTZiZjVhNGJkM2NkNWNlMmIwYzUxYzA4NjQ2MmJhZjZlOGE1NSIsImlhdCI6MTc3NjA4MDExMSwiZXhwIjoxNzc2MTY2NTExfQ.6x848W2qnLsLwJ4pUzCUxi3_AZLTuuy0D04XGtW9ll8; HttpOnly; Max-Age=86400; Path=/api/auth/refresh; SameSite=lax
+  [0;32m[SECURE][0m access_token: HttpOnly flag
+           [0;32m↳ JS cannot read this cookie[0m
+  [0;31m[VULN][0m   access_token: Secure missing
+           [0;31m↳ Token sent over HTTP too![0m
+  [0;32m[SECURE][0m access_token: SameSite flag
+           [0;32m↳ Cross-origin attacks blocked[0m
+  [0;32m[SECURE][0m access_token: Path scoped
+           [0;32m↳ Cookie scoped to /[0m
+  [0;32m[SECURE][0m refresh_token: HttpOnly flag
+  [0;31m[VULN][0m   refresh_token: HttpOnly missing
+           [0;31m↳ Refresh token stealable by JS![0m
+  [0;32m[SECURE][0m refresh_token: Scoped to /api/auth/refresh
+           [0;32m↳ Minimized attack surface[0m
+
+[0;36m[1m━━━ 5. BRUTE FORCE & ACCOUNT LOCKOUT (real test, not rate-limited) ━━━[0m
+  [1mBrute-forcing victim_1776080113@test.com with wrong passwords...[0m
+    Attempt 1: [1;33mRATE LIMITED[0m (HTTP 429)
+  [1;33m[WARN][0m   Rate limiter fired before lockout at attempt 1
+           [1;33m↳ Lockout may work but rate limiter hides it[0m
+  [0;32m[SECURE][0m Correct password also blocked during lockout
+           [0;32m↳ Lockout is absolute[0m
+
+[0;36m[1m━━━ 6. X-FORWARDED-FOR SPOOFING (Rate Limit Bypass) ━━━[0m
+  [1mSending 10 rapid requests with different spoofed IPs...[0m
+  [0;31m[VULN][0m   Rate limit bypassable via X-Forwarded-For
+           [0;31m↳ 10/10 requests got through with spoofed IPs[0m
+
+[0;36m[1m━━━ 7. AUTHORIZATION — IDOR & Privilege Escalation ━━━[0m
+  [0;32m[SECURE][0m Password hash NOT in /users/{id}
+           [0;32m↳ Sensitive data filtered[0m
+  [0;32m[SECURE][0m TOTP secret NOT in /users/{id}
+           [0;32m↳ 2FA secrets hidden[0m
+  [0;32m[SECURE][0m Internal fields hidden from /users/{id}
+  [0;32m[SECURE][0m /admin/users requires authentication
+           [0;32m↳ HTTP 401[0m
+  [0;31m[VULN][0m   /admin/audit-log accessible without auth
+           [0;31m↳ HTTP 404 — ADMIN PANEL EXPOSED![0m
+
+[0;36m[1m━━━ 8. SECURITY HEADERS — Full audit ━━━[0m
+  [0;32m[SECURE][0m API: X-Frame-Options
+           [0;32m↳ x-frame-options: DENY[0m
+  [0;32m[SECURE][0m API: X-Content-Type-Options
+           [0;32m↳ x-content-type-options: nosniff[0m
+  [0;32m[SECURE][0m API: Strict-Transport-Security
+           [0;32m↳ strict-transport-security: max-age=31536000; includeSubDomains[0m
+  [0;32m[SECURE][0m API: Content-Security-Policy
+           [0;32m↳ content-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'[0m
+  [0;32m[SECURE][0m API: Referrer-Policy
+           [0;32m↳ referrer-policy: strict-origin-when-cross-origin[0m
+  [0;32m[SECURE][0m API: Permissions-Policy
+           [0;32m↳ permissions-policy: camera=(), microphone=(), geolocation=(), payment=()[0m
+  [0;32m[SECURE][0m API: X-XSS-Protection
+           [0;32m↳ x-xss-protection: 1; mode=block[0m
+  [0;32m[SECURE][0m Nginx: X-Frame-Options
+  [0;32m[SECURE][0m Nginx: X-Content-Type-Options
+  [0;32m[SECURE][0m Nginx: Referrer-Policy
+  [0;32m[SECURE][0m No server technology fingerprint
+           [0;32m↳ Attacker can't ID your stack[0m
+
+[0;36m[1m━━━ 9. PATH TRAVERSAL & FILE UPLOAD ━━━[0m
+  [0;32m[SECURE][0m Path traversal blocked: ../../../../etc/passwd
+  [0;32m[SECURE][0m Path traversal blocked: ..%2F..%2F..%2Fetc%2Fpasswd
+  [0;32m[SECURE][0m Path traversal blocked: ....//....//etc/shadow
+  [0;32m[SECURE][0m Sensitive file not accessible: .env
+           [0;32m↳ HTTP 200[0m
+  [0;32m[SECURE][0m Sensitive file not accessible: backend/.env
+           [0;32m↳ HTTP 200[0m
+  [0;32m[SECURE][0m Sensitive file not accessible: ../.env
+           [0;32m↳ HTTP 200[0m
+  [0;32m[SECURE][0m Sensitive file not accessible: docker-compose.yml
+           [0;32m↳ HTTP 200[0m
+
+[0;36m[1m━━━ 10. INFORMATION DISCLOSURE ━━━[0m
+  [0;32m[SECURE][0m API docs hidden: /api/docs
+           [0;32m↳ HTTP 404[0m
+  [0;32m[SECURE][0m API docs hidden: /api/redoc
+           [0;32m↳ HTTP 404[0m
+  [0;32m[SECURE][0m API docs hidden: /api/openapi.json
+           [0;32m↳ HTTP 404[0m
+  [0;32m[SECURE][0m No stack traces in errors
+           [0;32m↳ Generic error messages[0m
+
+[0;36m[1m━━━ 11. USER ENUMERATION ━━━[0m
+  Fake email: 17ms | Real email: 19ms | Diff: 2ms
+  [0;32m[SECURE][0m Timing attack prevention
+           [0;32m↳ Difference only 2ms — constant-time response[0m
+  [0;32m[SECURE][0m Same error message for real/fake emails
+           [0;32m↳ "detail":"Too many requests. Please try again later."[0m
+
+[0;36m[1m━━━ 12. HTTPS / TLS ━━━[0m
+  [0;32m[SECURE][0m HTTP→HTTPS redirect
+           [0;32m↳ HTTP 301[0m
+  [0;32m[SECURE][0m HSTS enabled
+
+[1m[0;36m══════════════════════════════════════════════════════════════[0m
+[1m[0;36m  DEEP AUDIT RESULTS[0m
+[1m[0;36m══════════════════════════════════════════════════════════════[0m
+
+  [0;32mSECURE: 44[0m  |  [1;33mWARN: 1[0m  |  [0;31mVULN: 4[0m  |  TOTAL: 49
+
+  [0;31m[1m🚨 VULNERABLE — 4 issues need immediate fixes![0m
+

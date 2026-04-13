@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import or_
 from typing import Optional
+from fastapi.security import APIKeyCookie
 
 from app.database import get_db
 from app.models.user import User
@@ -29,8 +30,13 @@ from app.utils import get_client_ip, log_audit
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
 
-def _job_response(job: Job) -> JobResponse:
-    """Build a JobResponse from an ORM Job object."""
+def _job_response(job: Job, include_poster: bool = False) -> JobResponse:
+    """Build a JobResponse from an ORM Job object.
+    
+    Args:
+        include_poster: If True, include posted_by UUID. Only set True
+                       when the requesting user is the poster or a platform admin.
+    """
     return JobResponse(
         id=str(job.id),
         company_id=str(job.company_id),
@@ -45,7 +51,7 @@ def _job_response(job: Job) -> JobResponse:
         salary_max=job.salary_max,
         application_deadline=job.application_deadline,
         is_active=job.is_active,
-        posted_by=None,  # Omit from public response to prevent UUID leakage (A2.9)
+        posted_by=str(job.posted_by) if include_poster and job.posted_by else None,
         created_at=job.created_at,
         updated_at=job.updated_at,
     )
@@ -270,16 +276,34 @@ async def recommended_jobs(
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
     job_id: str,
+    request: Request,
     db: DBSession = Depends(get_db),
 ):
-    """Get job details. Public endpoint."""
+    """Get job details. Public endpoint with optional auth for ownership info."""
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found",
         )
-    return _job_response(job)
+    # Attempt optional authentication to determine ownership
+    include_poster = False
+    token = request.cookies.get("access_token")
+    if token:
+        try:
+            from app.security.jwt import decode_token
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+            if user_id:
+                viewer = db.query(User).filter(User.id == user_id).first()
+                if viewer:
+                    # Show posted_by if viewer is the poster or a platform admin
+                    if (job.posted_by and str(job.posted_by) == str(viewer.id)) or \
+                       viewer.role.value == "admin":
+                        include_poster = True
+        except Exception:
+            pass  # Not authenticated — that's fine, it's a public endpoint
+    return _job_response(job, include_poster=include_poster)
 
 
 @router.put("/{job_id}", response_model=JobResponse)
@@ -290,7 +314,7 @@ async def update_job(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update a job posting. Only the original poster (creator) can update."""
+    """Update a job posting. Only the original poster or platform admin can update."""
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(
@@ -298,8 +322,8 @@ async def update_job(
             detail="Job not found",
         )
 
-    # Only the person who created (posted) the job can edit it
-    if job.posted_by != current_user.id:
+    # Platform admins can edit any job; otherwise only the poster can
+    if current_user.role.value != "admin" and job.posted_by != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the person who posted this job can edit it",

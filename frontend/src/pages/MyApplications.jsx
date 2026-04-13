@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { applicationApi } from '../api/client';
 import Icon from '../components/Icons';
+import { useConfirm } from '../components/ConfirmDialog';
 
 const statusConfig = {
     applied: { label: 'Applied', color: 'var(--primary)', bg: 'var(--primary-subtle)', icon: 'clock' },
@@ -14,6 +15,7 @@ const statusConfig = {
 const statusOrder = ['applied', 'reviewed', 'interviewed', 'offer'];
 
 export default function MyApplications() {
+    const confirm = useConfirm();
     const [apps, setApps] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -33,7 +35,13 @@ export default function MyApplications() {
     }, []);
 
     const handleWithdraw = async (id) => {
-        if (!window.confirm('Withdraw this application?')) return;
+        const ok = await confirm({
+            title: 'Withdraw Application',
+            message: 'Are you sure you want to withdraw this application? This action cannot be undone.',
+            confirmText: 'Withdraw',
+            danger: true,
+        });
+        if (!ok) return;
         try {
             await applicationApi.withdraw(id);
             setApps(apps.filter(a => a.id !== id));

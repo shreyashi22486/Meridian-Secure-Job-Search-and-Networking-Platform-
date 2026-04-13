@@ -73,6 +73,9 @@ export default function Navbar() {
                             <Link to="/jobs" className="nav-link">
                                 <Icon name="briefcase" size={16} /> Jobs
                             </Link>
+                            <Link to="/applications" className="nav-link">
+                                <Icon name="fileText" size={16} /> Applications
+                            </Link>
                             <Link to="/companies" className="nav-link">
                                 <Icon name="building" size={16} /> Companies
                             </Link>
