@@ -24,7 +24,7 @@ export default function Navbar() {
             } catch { /* ignore */ }
         };
         fetchUnread();
-        pollRef.current = setInterval(fetchUnread, 10000); // every 10s
+        pollRef.current = setInterval(fetchUnread, 30000); // every 30s (reduced from 10s to avoid overloading single-worker backend)
         return () => clearInterval(pollRef.current);
     }, [user]);
 

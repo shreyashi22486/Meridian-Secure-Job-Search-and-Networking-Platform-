@@ -122,13 +122,13 @@ export default function Messages() {
         };
         fetchMessages();
 
-        // Poll for new messages every 3 seconds
+        // Poll for new messages every 10 seconds (reduced from 3s to avoid overloading backend)
         pollRef.current = setInterval(async () => {
             try {
                 const { data } = await api.get(`/messages/conversations/${activeConv.id}/messages`);
                 setMessages(data.messages);
             } catch { /* ignore */ }
-        }, 3000);
+        }, 10000);
 
         return () => clearInterval(pollRef.current);
     }, [activeConv]);

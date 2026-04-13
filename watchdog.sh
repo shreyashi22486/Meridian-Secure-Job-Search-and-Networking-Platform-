@@ -24,8 +24,11 @@ set -euo pipefail
 COMPOSE_DIR="/home/iiitd/Secure-Job-Portal"
 COMPOSE_FILE="${COMPOSE_DIR}/docker-compose.yml"
 LOG_FILE="/var/log/sjp-watchdog.log"
+PID_FILE="/tmp/sjp-watchdog.pid"
 
-BACKEND_URL="http://localhost:8000/api/health"
+# Force IPv4 (127.0.0.1) — backend is bound to 127.0.0.1 only,
+# using "localhost" can resolve to ::1 (IPv6) first and fail.
+BACKEND_URL="http://127.0.0.1:8000/api/health"
 FRONTEND_URL="http://localhost:80"
 
 POLL_INTERVAL=30          # seconds between health checks
@@ -55,7 +58,7 @@ log_success() { log "OK"      "$@"; }
 # ── Health check functions ───────────────────────────────────────────────
 check_backend() {
     local http_code
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+    http_code=$(curl -4 -s -o /dev/null -w "%{http_code}" \
         --max-time "${REQUEST_TIMEOUT}" \
         --insecure \
         "${BACKEND_URL}" 2>/dev/null) || http_code="000"
@@ -70,7 +73,7 @@ check_backend() {
 check_frontend() {
     local http_code
     # Try HTTP first, then HTTPS
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+    http_code=$(curl -4 -s -o /dev/null -w "%{http_code}" \
         --max-time "${REQUEST_TIMEOUT}" \
         --insecure \
         "${FRONTEND_URL}" 2>/dev/null) || http_code="000"
@@ -135,12 +138,27 @@ print_status() {
 # ── Trap signals for graceful shutdown ───────────────────────────────────
 cleanup() {
     log_info "Watchdog shutting down (received signal)."
+    rm -f "${PID_FILE}"
     exit 0
 }
-trap cleanup SIGTERM SIGINT SIGHUP
+trap cleanup SIGTERM SIGINT SIGHUP EXIT
 
 # ── Pre-flight checks ───────────────────────────────────────────────────
 preflight() {
+    # ── Prevent duplicate instances (PID lock) ───────────────────────
+    if [[ -f "${PID_FILE}" ]]; then
+        local existing_pid
+        existing_pid=$(cat "${PID_FILE}" 2>/dev/null)
+        if [[ -n "${existing_pid}" ]] && kill -0 "${existing_pid}" 2>/dev/null; then
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] Another watchdog is already running (PID ${existing_pid}). Exiting."
+            exit 1
+        else
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] Removing stale PID file (PID ${existing_pid} no longer running)."
+            rm -f "${PID_FILE}"
+        fi
+    fi
+    echo $$ > "${PID_FILE}"
+
     if ! command -v docker &>/dev/null; then
         log_error "Docker is not installed or not in PATH. Exiting."
         exit 1
