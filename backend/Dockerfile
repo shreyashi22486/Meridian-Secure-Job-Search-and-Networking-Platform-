@@ -24,10 +24,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY app/ app/
 COPY migrations/ migrations/
-COPY static/ static/
 
-# Create data directories and set permissions for the non-root user
-RUN mkdir -p data/resumes data/avatars data/pki && \
+# Create data and static directories and set permissions for the non-root user
+RUN mkdir -p data/resumes data/avatars data/pki static/css static/js && \
     chown -R appuser:appgroup /app
 
 # Switch to the non-root user
