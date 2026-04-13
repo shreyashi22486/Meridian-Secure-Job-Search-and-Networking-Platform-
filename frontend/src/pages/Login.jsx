@@ -33,7 +33,7 @@ export default function Login() {
         }
     };
 
-    const handle2FA = async (e) => {
+    const _handle2FA = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);

@@ -1,0 +1,285 @@
+% ═══════════════════════════════════════════════════════════════════════
+%  Milestone 3 — Main Deliverable Sections
+% ═══════════════════════════════════════════════════════════════════════
+
+\section{Milestone 3 — Job Workflows, Messaging, Admin Logging}
+\label{sec:milestone3}
+
+This milestone builds on the authentication and profile infrastructure of M2 to deliver the core business logic of the platform: company management, job posting and search, the application lifecycle, encrypted messaging, and tamper-evident admin audit trails.
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Goal 1: Company Pages \& Job Postings}
+
+Companies are the organizational units that own job listings. Their management introduces a multi-level RBAC model distinct from the platform-wide user roles.
+
+\subsubsection{Company RBAC Model}
+
+Each company maintains its own access-control hierarchy via the \texttt{CompanyAdmin} model, which supports three roles:
+
+\begin{itemize}
+    \item \textbf{Owner} — The user who created the company. Only the owner can add or remove other company admins.
+    \item \textbf{Admin} — Can create and manage job postings under the company.
+    \item \textbf{Editor} — Limited management privileges.
+\end{itemize}
+
+Only users with a platform role of \texttt{recruiter} or \texttt{admin} can create companies, enforced via the \texttt{require\_recruiter\_or\_admin} FastAPI dependency. Company creation automatically designates the creator as \texttt{OWNER} via a database flush-then-insert pattern — the company row is flushed to obtain its UUID before the \texttt{CompanyAdmin} row is inserted.
+
+\subsubsection{Input Sanitization on Company Data}
+
+All company fields pass through Pydantic \texttt{field\_validator}s that invoke \texttt{sanitize\_string()} — which uses \texttt{bleach.clean(tags=[], strip=True)} to strip \emph{all} HTML and null bytes. Website URLs receive additional validation: non-prefixed URLs are automatically normalised to \texttt{https://} before sanitisation.
+
+\subsubsection{Job Posting Management}
+
+Job postings are linked to companies via a foreign key with \texttt{CASCADE} delete — deleting a company removes all its jobs. Each job supports rich metadata: title, description, location, \texttt{work\_type} (remote/on\_site/hybrid), \texttt{job\_type} (full\_time/part\_time/internship/contract), salary range, required skills stored as PostgreSQL \texttt{JSONB} arrays, and an application deadline.
+
+Job creation requires passing the \texttt{\_check\_company\_admin} gate — the system queries the \texttt{CompanyAdmin} table to verify the requesting user holds any admin role for the target company, or is a platform admin. Only the original \texttt{posted\_by} user can edit a job (not just any company admin), while job deletion is restricted to platform administrators as a fraud-prevention measure. Every create, update, and delete operation is audit-logged with the job ID, title, and company context.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{company_page.png}
+    \caption{Company detail page showing the company's metadata and its associated job listings. Recruiters see ``Edit'' and ``Post Job'' actions; regular users see read-only content.}
+    \label{fig:company}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Goal 2: Job Search \& Application Workflow}
+
+\subsubsection{Parameterized Search with JSONB Operators}
+
+The \texttt{GET /api/jobs/} endpoint accepts ten query parameters: \texttt{keyword}, \texttt{location}, \texttt{work\_type}, \texttt{job\_type}, \texttt{skills} (comma-separated), \texttt{min\_salary}, \texttt{company\_id}, \texttt{status}, \texttt{skip}, and \texttt{limit}. Every filter is applied through SQLAlchemy's ORM — no raw SQL exists anywhere in the codebase.
+
+The most noteworthy security detail is skill-based filtering. Required skills are stored as \texttt{JSONB} arrays (\texttt{["python", "react", "sql"]}). Filtering uses PostgreSQL's \texttt{@>} containment operator:
+
+\begin{lstlisting}[language=Python]
+Job.required_skills.op("@>")(f'["{skill}"]')
+\end{lstlisting}
+
+This operator checks whether the JSONB array contains the specified element. Because it's applied through SQLAlchemy's \texttt{.op()} method with parameterized binding, it is structurally immune to SQL injection — even though the query involves user-controlled strings inside JSON syntax.
+
+Keyword search uses \texttt{ilike} on both \texttt{title} and \texttt{description} via an \texttt{OR} clause, and all results are paginated with a hard cap of 100 results per request (\texttt{min(limit, 100)}) to prevent resource exhaustion.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{job_search.png}
+    \caption{Job search interface with multi-parameter filtering: keyword, location, work type, job type, salary, and status filters. Sanitised inputs are passed as parameterised queries.}
+    \label{fig:jobsearch}
+\end{figure}
+
+\subsubsection{Application Submission}
+
+When a user applies to a job, the backend enforces several security checks:
+
+\begin{enumerate}
+    \item \textbf{Job existence and activity check} — The job must exist and \texttt{is\_active} must be true, preventing applications to closed postings.
+    \item \textbf{Duplicate prevention} — A database-level \texttt{UniqueConstraint("job\_id", "user\_id")} ensures a user can only apply once per job. The backend also performs a query-level check before insertion, returning \texttt{409 Conflict} with a clear message.
+    \item \textbf{Resume ownership verification} — If the applicant attaches a resume, the system verifies \texttt{Resume.user\_id == current\_user.id} before accepting it, preventing users from attaching other people's resumes.
+    \item \textbf{Cover note sanitisation} — The \texttt{cover\_note} field passes through \texttt{sanitize\_string()} via a Pydantic \texttt{field\_validator}.
+\end{enumerate}
+
+On the frontend, the \texttt{JobDetail} page checks the user's existing applications on mount by fetching \texttt{GET /api/applications/me} and matching against the current job ID. If already applied, the ``Apply Now'' button is replaced with a confirmation and a link to track the application.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{job_posting_applicant_view_1.png}
+        \caption{Job detail page showing description and metadata.}
+        \label{fig:applicantview1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{job_posting_applicant_view_2.png}
+        \caption{Application form with resume selection and cover note.}
+        \label{fig:applicantview2}
+    \end{subfigure}
+    \caption{Applicant's view of a job posting. The sidebar shows apply/track status, and the inline form allows resume attachment from the user's encrypted resume vault.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{job_posting_recruiter_view.png}
+    \caption{Recruiter's view of their own job posting. The sidebar offers ``Edit Job'' and ``View Applicants'' controls. Only the original poster (matched via \texttt{posted\_by}) sees these actions.}
+    \label{fig:recruiterview}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Goal 3: Application Status Tracking}
+
+\subsubsection{Lifecycle States}
+
+Applications move through five states: \texttt{APPLIED} → \texttt{REVIEWED} → \texttt{INTERVIEWED} → \texttt{OFFER} / \texttt{REJECTED}. The status field is a PostgreSQL enum with a Pydantic validator that rejects any value outside the permitted set (\texttt{applied}, \texttt{reviewed}, \texttt{interviewed}, \texttt{rejected}, \texttt{offer}).
+
+\subsubsection{Strict Data Segregation}
+
+Two distinct response schemas ensure information separation between the two parties in the application workflow:
+
+\begin{itemize}
+    \item \textbf{ApplicationResponse} (for applicants via \texttt{GET /me}) — Contains \texttt{job\_title}, \texttt{company\_name}, \texttt{status}, \texttt{cover\_note}, and timestamps. Applicants \emph{never} see recruiter notes or other applicants' data.
+    \item \textbf{ApplicationDetailResponse} (for recruiters via \texttt{GET /job/\{job\_id\}}) — Adds \texttt{applicant\_name}, \texttt{applicant\_email}, and \texttt{recruiter\_notes}. This endpoint is gated behind \texttt{\_is\_job\_poster()}, which verifies \texttt{job.posted\_by == current\_user.id}.
+\end{itemize}
+
+Status updates (\texttt{PUT /:id/status}) and notes (\texttt{PUT /:id/notes}) both re-verify job poster identity before allowing mutations. Status changes are audit-logged with the old and new status values. Recruiter notes are sanitised via \texttt{sanitize\_string()} before storage.
+
+Applicants can withdraw (\texttt{DELETE /:id}) only while in the \texttt{applied} state (enforced on the frontend), and the deletion is scoped to \texttt{Application.user\_id == current\_user.id}.
+
+\subsubsection{Visual Timeline}
+
+The frontend renders a visual pipeline with four ordered stages (Applied → Reviewed → Interviewed → Offer). Each stage is represented as a circle that fills with colour as the application progresses, connected by progress bars. Rejected applications display a distinct red notification instead.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{application_status_tracking.png}
+    \caption{Candidate's ``My Applications'' view with visual status timeline. Each card shows the current pipeline stage and allows withdrawal for pending applications.}
+    \label{fig:appstatus}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{applicants_page.png}
+    \caption{Recruiter's applicant management table. Status can be changed via dropdown, resumes downloaded (with OTP verification via virtual keyboard), and private notes added inline.}
+    \label{fig:applicants}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Goal 4: Encrypted Messaging}
+
+The messaging system supports both one-to-one and group conversations with distinct encryption strategies suited to each context.
+
+\subsubsection{Conversation Types}
+
+The \texttt{ConversationType} enum defines three types:
+\begin{itemize}
+    \item \texttt{DIRECT} — One-to-one with client-side E2EE.
+    \item \texttt{GROUP} — Multi-member with server-side Fernet encryption.
+    \item \texttt{ANNOUNCEMENT} — Reserved for system/company broadcasts.
+\end{itemize}
+
+Conversation membership is tracked via the \texttt{ConversationMember} model with a \texttt{UniqueConstraint("conversation\_id", "user\_id")} preventing duplicate entries. Every message endpoint calls \texttt{\_check\_member()} — a helper that queries the membership table and raises \texttt{403 Forbidden} if the requesting user is not a member.
+
+\subsubsection{Direct Messages — Client-Side E2EE}
+
+For 1:1 conversations, the server is \textbf{zero-knowledge}. The message flow is:
+
+\begin{enumerate}
+    \item On conversation start, each participant can upload a public key via \texttt{PUT /public-key}. The key is stored in the \texttt{ConversationMember.public\_key} column.
+    \item The sender encrypts the message locally using AES-GCM, producing ciphertext and a nonce (IV).
+    \item The \texttt{SendMessageRequest} delivers \texttt{encrypted\_content} (ciphertext) and \texttt{nonce} to the server, which stores them verbatim in the \texttt{Message} model — the server never sees plaintext.
+    \item On retrieval (\texttt{GET /conversations/\{id\}/messages}), the ciphertext is returned as-is. The client decrypts locally using the shared secret.
+\end{enumerate}
+
+The frontend confirms the encryption status in the chat header: direct conversations display ``End-to-end encrypted'' with a lock icon.
+
+\subsubsection{Group Messages — Server-Side Fernet}
+
+Group conversations face a key-distribution challenge: distributing unique keys to N dynamically-changing members is infeasible in a browser. Instead, group messages use server-side \textbf{Fernet encryption} (AES-128-CBC + HMAC-SHA256):
+
+\begin{enumerate}
+    \item The sender transmits plaintext to \texttt{POST /conversations/\{id\}/messages}.
+    \item The backend detects \texttt{conv.type != DIRECT} and encrypts with \texttt{\_fernet.encrypt()}, producing a Fernet token (starting with \texttt{gAAA...}).
+    \item Only the Fernet ciphertext is persisted. The response to the sender includes the original plaintext for immediate display.
+    \item On retrieval, the backend decrypts each message with \texttt{\_fernet.decrypt()} \emph{in memory} and returns plaintext over TLS. Decrypted content never touches disk.
+\end{enumerate}
+
+Group conversations display ``Encrypted at rest'' with a shield icon, clearly distinguishing the security model from E2EE.
+
+\subsubsection{PKI Message Signing}
+
+Every message — direct or group — is digitally signed using the server's RSA-2048 private key:
+
+\begin{lstlisting}[language=Python]
+msg.signature = sign_data(encrypted_content.encode("utf-8"))
+\end{lstlisting}
+
+On retrieval, the system verifies each message's signature against the stored ciphertext using \texttt{pki\_verify()}. The response includes a \texttt{verified} boolean, allowing the frontend to flag messages whose signatures don't match — indicating potential tampering in the database.
+
+\subsubsection{Read Receipts and Unread Counts}
+
+Each \texttt{ConversationMember} tracks a \texttt{last\_read\_at} timestamp. When messages are fetched, this timestamp is updated to \texttt{datetime.utcnow()}. Unread counts are computed by counting messages sent \emph{after} \texttt{last\_read\_at} by \emph{other} users:
+
+\begin{lstlisting}[language=Python]
+unread = db.query(func.count(Message.id)).filter(
+    Message.conversation_id == conv.id,
+    Message.sent_at > membership.last_read_at,
+    Message.sender_id != current_user_id,
+).scalar()
+\end{lstlisting}
+
+A dedicated \texttt{GET /unread-count} endpoint aggregates the total across all conversations for the navigation badge. The frontend polls every 3 seconds for new messages in the active conversation.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{encrypted_group_messaging_sender_view.png}
+        \caption{Sender's view in a group conversation.}
+        \label{fig:msgsender}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \includegraphics[width=\textwidth]{encrypted_group_messaging_receiver_view.png}
+        \caption{Receiver's view with message verification.}
+        \label{fig:msgreceiver}
+    \end{subfigure}
+    \caption{Messaging interface supporting both direct E2EE and group conversations. The header displays the encryption level, and the sidebar shows conversations with unread badges.}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Goal 5: Tamper-Evident Admin Audit Trails}
+
+\subsubsection{Hash Chain Construction}
+
+Every security-relevant action recorded via \texttt{log\_audit()} creates a cryptographic hash chain. The \texttt{\_compute\_entry\_hash()} function computes the SHA-256 hash of a pipe-delimited string containing:
+
+\begin{lstlisting}[language=Python]
+raw = f"{action}|{user_id}|{ip_address}|{timestamp}|
+       {json.dumps(details, sort_keys=True)}|{prev_hash}"
+entry_hash = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+\end{lstlisting}
+
+Each entry's \texttt{prev\_hash} field points to the \texttt{entry\_hash} of the chronologically previous log entry (or 64 zero-characters for the genesis entry). This creates a \textbf{blockchain-style sequential chain} — modifying or deleting any entry breaks every subsequent hash.
+
+Timestamps use a fixed format (\texttt{"\%Y-\%m-\%dT\%H:\%M:\%S.\%f"}) via \texttt{\_format\_ts()} to prevent formatting variance between write and verification. Details are serialised with \texttt{sort\_keys=True} for deterministic JSON output.
+
+\subsubsection{PKI Digital Signatures}
+
+After computing the entry hash, the system signs it with the server's RSA-2048 private key using PKCS\#1 v1.5 padding and SHA-256. The Base64-encoded signature is stored in the \texttt{AuditLog.signature} column. Even if an attacker recomputes a valid hash chain after modification, they cannot forge the PKI signature without the private key (which is stored on disk with \texttt{chmod 600} permissions, accessible only to the process owner).
+
+\subsubsection{Chain Verification Endpoint}
+
+The \texttt{GET /api/admin/audit-logs/verify} endpoint walks the entire chain from entry \#1 to the latest, performing three checks per entry:
+
+\begin{enumerate}
+    \item \textbf{prev\_hash linkage} — The entry's \texttt{prev\_hash} must match the previous entry's \texttt{entry\_hash}.
+    \item \textbf{Content integrity} — Re-computing the hash from the entry's fields must produce the same \texttt{entry\_hash}.
+    \item \textbf{Signature validity} — The PKI signature must verify against the entry hash using the server's public key.
+\end{enumerate}
+
+If any check fails, the response identifies the exact entry where tampering was detected: \texttt{``Tamper detected at entry \#42''}.
+
+\subsubsection{Audit Event Coverage}
+
+The platform logs events across all M3 workflows:
+\begin{itemize}[noitemsep]
+    \item \texttt{company\_created}, \texttt{company\_updated}, \texttt{company\_deleted}
+    \item \texttt{company\_admin\_added}, \texttt{company\_admin\_removed}
+    \item \texttt{job\_posted}, \texttt{job\_updated}, \texttt{job\_deleted}
+    \item \texttt{application\_submitted}, \texttt{application\_withdrawn}
+    \item \texttt{application\_status\_changed} (with old/new status)
+    \item \texttt{conversation\_created} (with type: direct/group)
+    \item \texttt{role\_changed}, \texttt{user\_suspended}, \texttt{user\_deleted}
+    \item \texttt{admin\_delete\_otp\_failed} (security-critical)
+\end{itemize}
+
+Admin user deletion requires TOTP verification — the admin must have 2FA enabled and provide a valid OTP code, which is verified via \texttt{verify\_totp()} before proceeding. A failed OTP attempt is immediately logged as \texttt{admin\_delete\_otp\_failed}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{audit_log_1.png}
+    \caption{Admin audit log console showing paginated security events with timestamps, actor IDs, IP addresses, and contextual details in JSONB.}
+    \label{fig:audit1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{audit_log_2.png}
+    \caption{Audit log integrity verification. The chain validator walks all entries and confirms whether the hash chain and PKI signatures are intact.}
+    \label{fig:audit2}
+\end{figure}

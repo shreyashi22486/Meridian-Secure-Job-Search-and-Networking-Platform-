@@ -1,0 +1,121 @@
+% ═══════════════════════════════════════════════════════════════════════
+%  Security Analysis — Milestone 3
+% ═══════════════════════════════════════════════════════════════════════
+
+\section{Security Analysis}
+\label{sec:security_m3}
+
+This section analyses the security posture of the M3 features through the lens of specific attack vectors and architectural defenses.
+
+\subsection{Injection Attacks}
+
+\textbf{SQL Injection.} The entire codebase uses SQLAlchemy ORM with parameterized bindings — no raw SQL strings exist. Job search, which accepts over ten user-controlled parameters, routes everything through ORM filters. The JSONB skill-matching uses SQLAlchemy's \texttt{.op("@>")} method, which generates a parameterized operator, not string concatenation. Pydantic schemas validate enum values (\texttt{work\_type}, \texttt{job\_type}, \texttt{status}) before they reach the ORM, rejecting invalid input at the schema layer.
+
+\textbf{Stored XSS.} Every text field across companies, jobs, applications, messages, and recruiter notes passes through \texttt{bleach.clean(tags=[], strip=True)} at the Pydantic validator level, stripping all HTML tags, event handlers, and null bytes. Group chat names are sanitised via a dedicated \texttt{@field\_validator("name")} on \texttt{CreateGroupRequest}. On the client side, React's JSX auto-escaping provides a second layer of defense.
+
+\subsection{Broken Access Control}
+
+\textbf{IDOR (Insecure Direct Object References).} All primary keys are PostgreSQL \texttt{UUIDv4} (128-bit random), making sequential enumeration infeasible ($2^{122}$ entropy). Beyond IDs, every mutating endpoint performs ownership verification:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{4.5cm} p{8.5cm}}
+    \toprule
+    \textbf{Operation} & \textbf{Access Check} \\
+    \midrule
+    Create company & \texttt{require\_recruiter\_or\_admin} dependency \\
+    Edit company & \texttt{company.created\_by == current\_user.id} \\
+    Delete company & \texttt{current\_user.role == "admin"} (platform admin only) \\
+    Create job & \texttt{\_check\_company\_admin()} — queries \texttt{CompanyAdmin} table \\
+    Edit job & \texttt{job.posted\_by == current\_user.id} (original poster only) \\
+    Delete job & \texttt{current\_user.role == "admin"} (platform admin only) \\
+    View applicants & \texttt{\_is\_job\_poster()} — \texttt{job.posted\_by == user.id} \\
+    Update app status & \texttt{\_is\_job\_poster()} re-verified per request \\
+    Withdraw application & \texttt{Application.user\_id == current\_user.id} \\
+    Send message & \texttt{\_check\_member()} — membership table query \\
+    Read messages & \texttt{\_check\_member()} — membership table query \\
+    \bottomrule
+\end{tabular}
+\caption{Access control checks enforced at the API layer for every M3 operation. All checks use FastAPI's \texttt{Depends()} injection — bypassing the frontend does not bypass authorization.}
+\end{table}
+
+\textbf{Privilege escalation.} Admins cannot change their own role (\texttt{str(admin.id) == user\_id} check), cannot suspend themselves, and cannot delete themselves. User deletion additionally requires TOTP verification — the admin must provide a valid 6-digit OTP code, verified through the same \texttt{verify\_totp()} path used during login, with replay prevention via the \texttt{used\_otps} table.
+
+\textbf{Resume access control.} When a recruiter downloads an applicant's resume from the applicant management page, the download still requires OTP verification. The frontend presents a virtual keyboard for OTP input (preventing keylogger exfiltration), and the backend's resume download endpoint verifies TOTP before decrypting the Fernet-encrypted file.
+
+\subsection{Cryptographic Architecture}
+
+\textbf{E2EE design choice.} Direct messages use client-side AES-GCM encryption. The server stores only ciphertext and nonce — it cannot read, search, or moderate DM content. This is an intentional trade-off: we sacrifice server-side content moderation for mathematical privacy guarantees.
+
+\textbf{Group encryption trade-off.} For group chats, true E2EE would require each sender to encrypt each message N times (once per member's public key) and re-encrypt on every membership change. This is impractical in a browser context. Instead, we use server-side Fernet (AES-128-CBC + HMAC-SHA256), which provides \emph{encryption at rest} — protecting against database dumps, backup theft, and filesystem access — while allowing the server to decrypt for delivery.
+
+\textbf{PKI integrity layer.} An RSA-2048 key pair is generated at first startup. The private key is stored at \texttt{PKI\_KEY\_DIR/server\_private.pem} with \texttt{chmod 600} permissions. It signs:
+\begin{itemize}[noitemsep]
+    \item Every chat message (stored in \texttt{Message.signature})
+    \item Every audit log entry hash (stored in \texttt{AuditLog.signature})
+\end{itemize}
+
+Signatures use PKCS\#1~v1.5 padding with SHA-256, Base64-encoded for storage. Verification uses the corresponding public key, available at \texttt{server\_public.pem}.
+
+\subsection{Data Integrity — Audit Chain}
+
+The audit log's hash-chain is a stronger integrity guarantee than simple logging:
+
+\begin{enumerate}
+    \item \textbf{Deletion detection.} Removing any entry breaks the \texttt{prev\_hash} → \texttt{entry\_hash} linkage of the successor.
+    \item \textbf{Modification detection.} Changing any field (action, IP, timestamp, details) produces a different SHA-256 hash.
+    \item \textbf{Forgery prevention.} Even if an attacker recomputes valid hashes, they cannot forge the PKI signature without the RSA private key.
+    \item \textbf{Deterministic verification.} Timestamps use a fixed format (\texttt{"\%Y-\%m-\%dT\%H:\%M:\%S.\%f"}) and details use \texttt{sort\_keys=True} serialisation, ensuring re-computation produces identical results.
+\end{enumerate}
+
+The \texttt{backfill\_audit\_hashes()} utility can recompute the entire chain from scratch (e.g., after a database migration), re-signing every entry.
+
+\subsection{Rate Limiting \& Abuse Prevention}
+
+All API endpoints pass through the \texttt{RateLimitMiddleware}, a sliding-window rate limiter keyed by \texttt{(client\_IP, endpoint\_path)}:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{5cm} p{4cm}}
+    \toprule
+    \textbf{Endpoint} & \textbf{Limit} \\
+    \midrule
+    \texttt{/api/auth/login} & 5 requests / minute \\
+    \texttt{/api/auth/verify-2fa} & 3 requests / minute \\
+    \texttt{/api/auth/register} & 5 requests / minute \\
+    \texttt{/api/resumes/upload} & 10 requests / minute \\
+    All other endpoints & 60 requests / minute \\
+    \bottomrule
+\end{tabular}
+\caption{Rate limit configuration. Exceeded limits return \texttt{429 Too Many Requests} with a \texttt{Retry-After} header.}
+\end{table}
+
+The remaining request count is exposed in the \texttt{X-RateLimit-Remaining} response header for client-side awareness.
+
+\subsection{CSRF Protection on State-Changing Requests}
+
+The frontend API client attaches CSRF tokens to all mutating requests (\texttt{POST}, \texttt{PUT}, \texttt{DELETE}, \texttt{PATCH}) via an Axios interceptor that reads the token from \texttt{localStorage} and sets the \texttt{X-CSRF-Token} header. The backend's \texttt{CSRFMiddleware} validates this header against the double-submit cookie on every state-changing request. This protects all M3 workflows — company creation, job posting, application submission, message sending, and admin actions — from cross-site request forgery.
+
+\subsection{Updated RBAC Matrix}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{3cm} p{2.5cm} p{3cm} p{3cm}}
+    \toprule
+    \textbf{Resource} & \textbf{User} & \textbf{Recruiter} & \textbf{Admin} \\
+    \midrule
+    Companies      & Read          & Create / Edit (own)  & Full control \\
+    Job postings   & Read / Apply  & Create / Edit (own)  & Read / Delete \\
+    Own apps       & Read / Withdraw & —               & — \\
+    Job applicants & —             & Read / Update (own jobs) & — \\
+    Direct messages & Send / Read (E2EE) & Send / Read (E2EE) & Send / Read (E2EE) \\
+    Group messages & Send / Read   & Send / Read          & Send / Read \\
+    Audit logs     & —             & —                   & Read / Verify chain \\
+    User management & —            & —                   & Roles / Suspend / Delete \\
+    \bottomrule
+\end{tabular}
+\caption{Complete M3 RBAC matrix. All checks are enforced at the FastAPI router layer via \texttt{Depends()} injection.}
+\end{table}

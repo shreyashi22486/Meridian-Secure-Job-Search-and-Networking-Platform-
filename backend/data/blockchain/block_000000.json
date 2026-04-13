@@ -1,0 +1,12 @@
+{
+  "block_number": 0,
+  "prev_block_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "merkle_root": "0000000000000000000000000000000000000000000000000000000000000000",
+  "nonce": 204,
+  "difficulty": 2,
+  "block_hash": "00df2782d7ebbe409ffcdf24d8c0b4b70cd9d34d85f27f0fa648ceec9fc04286",
+  "entry_ids": [],
+  "entry_count": 0,
+  "created_at": "2026-04-11T12:10:28.299620",
+  "signature": "THQFicwkt0ONN8HjtBMK0f93dedgbSS1ucAue4CST+LrwOIoNQf3OLt9wjKwTg1UG9LS6WlmHkNCm8sq55T5nEASQyUhOmxEAuziiHJWlUgQH3wHR035uf/4LRPhusIRZhS5iMAgYkUzJ5uZzp3+zsM8ja/dKY97z6Awzw7GkxXVIT9WeA1cMtC6FzzXL7/l+3GrY+ID9/a1DWNnB9sHI0z75gY+Xtsp5lcizpfH1EcDhjxpakStYrl+z/6yYrON8Q7qSWJSVadRYTrRaX8Gjz6jerS1pLco99h5zyJf4MZ+7CBBxKOjjuJN094d8hexOL76P7q+N93v54myJtlkhg=="
+}

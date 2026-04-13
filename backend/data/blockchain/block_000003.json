@@ -1,0 +1,18 @@
+{
+  "block_number": 3,
+  "prev_block_hash": "007cca3f33164d13d83ad4d44b283762c1ec5a92405ec228714c2bcf1b7dc0b7",
+  "merkle_root": "d41aec001b21b3cbe55c2c156646dd7624d2409e2c29b6c616c29cb80d0bbc3e",
+  "nonce": 372,
+  "difficulty": 2,
+  "block_hash": "00723e1cf71884a040218935a8a618c657eb459d2102e1352f526b5029065909",
+  "entry_ids": [
+    21,
+    22,
+    23,
+    24,
+    25
+  ],
+  "entry_count": 5,
+  "created_at": "2026-04-11T12:10:28.506843",
+  "signature": "lTrDxXhmQ4sy669Qpou10aRcINEacr9jKQ7BPzqzlRQs/z28GWtYuZUxiZcLBKQNlgHY14sS2WZTBm3MEni5CECPqkZy0m5ekiWSB+a1Ct0+/KUeJ9yA4KxCXyMWU8hwPSUOchCQEBIS1aGaUqZQH+R3yk1I/q/rwMXyPhNRE9T4WNNP3YTXXqBtWUiIh1L86SzCakuZuMIF1d6W9jjtc23SB4i/i41xoOimBKZBWvjuPcEZz9NbsohctzueMEGZKCi+bYd+iWirq61jPa15PBOWaldR+UYksHmfF2LlajCPXBIR5+p9LdEa4X7M7BO1TlouFi0gQa3pFtwiwLDy7A=="
+}

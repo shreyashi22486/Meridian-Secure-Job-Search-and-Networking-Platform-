@@ -46,6 +46,7 @@ export default function Jobs() {
         }
     };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { fetchJobs(page * limit); }, [page]);
 
     // Fetch recommended jobs for logged-in users

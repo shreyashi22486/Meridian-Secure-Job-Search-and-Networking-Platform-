@@ -34,6 +34,7 @@ export default function Companies() {
         }
     };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { fetchCompanies(page * limit); }, [page]);
 
     const handleSearch = (e) => {

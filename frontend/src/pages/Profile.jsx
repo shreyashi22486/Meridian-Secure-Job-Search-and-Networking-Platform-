@@ -624,6 +624,7 @@ export default function Profile() {
     }, [user]);
 
     // Load privacy settings and viewers when Privacy tab is selected
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (activeTab === 'privacy' && !privacySettings) {
             userApi.getPrivacy().then(({ data }) => {

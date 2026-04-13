@@ -48,6 +48,7 @@ export default function Messages() {
     };
 
     // Fetch conversations
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         const fetch = async () => {
             try {
@@ -92,6 +93,7 @@ export default function Messages() {
     }, []);
 
     // Fetch messages for active conversation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (!activeConv) return;
         const fetchMessages = async () => {

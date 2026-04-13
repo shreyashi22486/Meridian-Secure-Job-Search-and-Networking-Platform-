@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { companyApi, jobApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icons';
@@ -7,7 +7,6 @@ import Icon from '../components/Icons';
 export default function CompanyDetail() {
     const { id } = useParams();
     const { user } = useAuth();
-    const navigate = useNavigate();
     const [company, setCompany] = useState(null);
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);

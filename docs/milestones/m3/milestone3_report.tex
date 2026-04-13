@@ -1,0 +1,187 @@
+% ═══════════════════════════════════════════════════════════════════════
+%  Meridian — Milestone 3 Standalone Report
+%  CSE 345/545 Foundations of Computer Security
+%  Compile: pdflatex milestone3_report.tex (run twice for TOC)
+% ═══════════════════════════════════════════════════════════════════════
+\documentclass[12pt, a4paper]{article}
+
+% ─── Packages ─────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tikz}
+
+% ─── Colors ───────────────────────────────────────────────────────────
+\definecolor{meridianblue}{HTML}{4F46E5}
+\definecolor{meridiandark}{HTML}{1E1B4B}
+\definecolor{codebg}{HTML}{F8F9FA}
+\definecolor{codeframe}{HTML}{D1D5DB}
+
+% ─── Hyperref ─────────────────────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=meridianblue,
+    urlcolor=meridianblue,
+    pdfauthor={Team Meridian},
+    pdftitle={Meridian — Milestone 3 Report},
+    pdfsubject={CSE 345/545 Course Project — Milestone 3},
+}
+
+% ─── Code listings ───────────────────────────────────────────────────
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{codeframe},
+    breaklines=true,
+    captionpos=b,
+    tabsize=2,
+    showstringspaces=false,
+    keywordstyle=\color{meridianblue}\bfseries,
+    commentstyle=\color{gray},
+    stringstyle=\color{red!70!black},
+}
+
+% ─── Headers & footers ──────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{gray}{CSE 345/545 — Milestone 3}}
+\fancyhead[R]{\small\textcolor{gray}{Meridian}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{14pt}
+
+% ─── Section styling ────────────────────────────────────────────────
+\titleformat{\section}
+    {\Large\bfseries\color{meridiandark}}
+    {\thesection}{1em}{}
+\titleformat{\subsection}
+    {\large\bfseries\color{meridiandark}}
+    {\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+    {\normalsize\bfseries\color{meridiandark}}
+    {\thesubsubsection}{1em}{}
+
+\graphicspath{{../../report/figures/milestone_3_images/}}
+
+% ═══════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ─── Title Page ──────────────────────────────────────────────────────
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\Huge\bfseries\textcolor{meridiandark}{Meridian}\par}
+    \vspace{0.5cm}
+    {\Large\textcolor{meridianblue}{Secure Job Search \& Professional\\Networking Platform}\par}
+
+    \vspace{1.5cm}
+
+    {\LARGE\textbf{Milestone 3 Report}\par}
+    \vspace{0.3cm}
+    {\large Companies, Jobs, Applications, Encrypted Messaging, Audit Logging\par}
+
+    \vspace{1.5cm}
+
+    {\large\textbf{CSE 345/545 — Foundations of Computer Security}\par}
+
+    \vspace{1.5cm}
+
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Team Members} & \textbf{Roll Number} \\
+        \midrule
+        Aniket Gupta    & 2022073 \\
+        Angadjeet Singh & 2022071 \\
+        Harsh Kumar     & 2022198 \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{2cm}
+
+    {\large IIIT Delhi\par}
+\end{titlepage}
+
+% ─── Table of Contents ──────────────────────────────────────────────
+\newpage
+\tableofcontents
+\newpage
+
+% ═══════════════════════════════════════════════════════════════════════
+%  1. Overview — What this milestone covers
+% ═══════════════════════════════════════════════════════════════════════
+\section{Overview}
+
+This report covers Milestone~3 of the Meridian platform. Building on the authentication, profile management, encrypted resume storage, and admin dashboard delivered in M2, this milestone implements the core job-portal workflows and advanced security infrastructure:
+
+\begin{enumerate}
+    \item \textbf{Company pages and job postings} — Multi-level company RBAC (Owner/Admin/Editor), full CRUD for companies and jobs, with audit logging on every mutation.
+    \item \textbf{Job search and application workflow} — Parameterized multi-filter search using JSONB operators, application submission with resume attachment and ownership verification, duplicate prevention via database constraints.
+    \item \textbf{Application status tracking} — Five-state lifecycle (Applied → Reviewed → Interviewed → Offer/Rejected), strict data segregation between applicant and recruiter views, recruiters' private notes invisible to candidates.
+    \item \textbf{Encrypted one-to-one and group messaging} — Client-side E2EE (AES-GCM) for direct messages with zero-knowledge server, server-side Fernet encryption for groups, PKI digital signatures on all messages, read receipts and unread counts.
+    \item \textbf{Tamper-evident admin audit logging} — SHA-256 hash-chained audit entries with RSA-2048 PKI digital signatures, automated chain verification endpoint, OTP-gated destructive admin actions.
+\end{enumerate}
+
+\subsection{Technology Stack}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{3cm} p{4cm} p{6cm}}
+    \toprule
+    \textbf{Layer} & \textbf{Technology} & \textbf{Rationale} \\
+    \midrule
+    Backend & Python / FastAPI & Async, dependency injection for RBAC, Pydantic validation \\
+    Frontend & React 18 / Vite & JSX auto-escaping (XSS defense), component-level state \\
+    Database & PostgreSQL 16 & UUIDv4 PKs, JSONB for skills/details, ACID compliance \\
+    Cryptography & Fernet + RSA-2048 & Fernet for at-rest encryption, RSA for signing/verification \\
+    Client Crypto & AES-GCM (Web Crypto) & Browser-native E2EE for direct messages \\
+    Deployment & Nginx + Uvicorn & Reverse proxy with TLS termination \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Architecture}
+
+\begin{center}
+\begin{tikzpicture}[
+    box/.style={draw, rounded corners, minimum width=3.5cm, minimum height=1cm, align=center, fill=#1!10, draw=#1!50!black},
+    arrow/.style={->, thick, >=stealth}
+]
+    \node[box=blue] (client) at (0, 6) {\textbf{React Frontend}\\AES-GCM / Axios + CSRF};
+    \node[box=green] (api) at (0, 3.5) {\textbf{FastAPI Backend}\\RBAC / Rate Limiting / Fernet};
+    \node[box=orange] (db) at (-3, 1) {\textbf{PostgreSQL}\\Jobs, Messages,\\Hash-Chained Logs};
+    \node[box=red] (pki) at (3, 1) {\textbf{PKI Service}\\RSA-2048 Sign/Verify};
+    \draw[arrow] (client) -- node[right, font=\small] {HTTPS / Ciphertext} (api);
+    \draw[arrow] (api) -- node[left, font=\small] {SQLAlchemy ORM} (db);
+    \draw[arrow] (api) -- node[right, font=\small] {PKCS\#1v15 + SHA-256} (pki);
+\end{tikzpicture}
+\end{center}
+
+% ═══════════════════════════════════════════════════════════════════════
+%  2–6. The five goals
+% ═══════════════════════════════════════════════════════════════════════
+\input{../../report/sections/milestone3}
+
+% ═══════════════════════════════════════════════════════════════════════
+%  Security Summary
+% ═══════════════════════════════════════════════════════════════════════
+\newpage
+\input{../../report/sections/security_m3}
+
+\end{document}

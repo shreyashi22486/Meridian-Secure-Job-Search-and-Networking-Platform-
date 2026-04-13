@@ -1,0 +1,23 @@
+{
+  "block_number": 1,
+  "prev_block_hash": "00df2782d7ebbe409ffcdf24d8c0b4b70cd9d34d85f27f0fa648ceec9fc04286",
+  "merkle_root": "bc8d8dae130928a7c11543838593460eb764c1369abaf9c463ae1c795d4637e5",
+  "nonce": 558,
+  "difficulty": 2,
+  "block_hash": "001743ea21eaa22ad640764b7b126691ac682ea8980377ef2fb8c63491088db5",
+  "entry_ids": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "entry_count": 10,
+  "created_at": "2026-04-11T12:10:28.375865",
+  "signature": "laQsqZ9IP4JpZyqCxRmvNdFO9AuWO1NvSjIrptW8ub7A9uuYkwEJz2JWhJFMBjf06wP7jGS2e+bOUVVpC4d0+u/dFMkbqHRyrq2WNsPHQJjO4ZFlu6SOGVvpzMfFBTLoS2z+6l9X6DkwAD3pS1ivb2piYe/PUOJ4Q7SorvuwPajxQISgYrI50QrQCF66pNfGRLpCfgmTJSwv8Syc2P8brkvVkCEDJ1jQVhVHdrnW2mFUCCkYHqygjTpgDMSvJJ/OZWucbzEz+AxWH5C0K2ykj46+PtB5y9Y6GXKObpKsha/5Z8eW/SRWLBuJiE+6PSvnhK0dipanNswphFXyeTgg8w=="
+}
