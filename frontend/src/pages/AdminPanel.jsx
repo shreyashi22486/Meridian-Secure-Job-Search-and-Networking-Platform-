@@ -252,7 +252,7 @@ export default function AdminPanel() {
                             <colgroup>
                                 <col style={{ width: '155px' }} />
                                 <col style={{ width: '210px' }} />
-                                <col style={{ width: '130px' }} />
+                                <col style={{ width: '180px' }} />
                                 <col style={{ width: '130px' }} />
                                 <col style={{ width: '150px' }} />
                                 <col style={{ width: '50px' }} />
@@ -281,8 +281,8 @@ export default function AdminPanel() {
                                         </td>
                                         <td><span className="badge badge-action" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>{log.action}</span></td>
                                         <td>
-                                            <div style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }} title={log.user_id || ''}>
-                                                {log.user_email || (log.user_id ? log.user_id.slice(0, 8) + '…' : '—')}
+                                            <div style={{ fontSize: '0.75rem', wordBreak: 'break-all' }} title={log.user_id || ''}>
+                                                {log.user_email || (log.user_id ? log.user_id : '—')}
                                             </div>
                                         </td>
                                         <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{log.ip_address || '—'}</td>
@@ -506,7 +506,7 @@ export default function AdminPanel() {
                                                     <tr key={e.id}>
                                                         <td>{e.id}</td>
                                                         <td>{e.action}</td>
-                                                        <td style={{ fontFamily: 'monospace', fontSize: '0.7rem' }}>{e.entry_hash?.slice(0, 16)}...</td>
+                                                        <td style={{ fontFamily: 'monospace', fontSize: '0.7rem', wordBreak: 'break-all' }}>{e.entry_hash || '—'}</td>
                                                         <td>{new Date(e.created_at).toLocaleString()}</td>
                                                     </tr>
                                                 ))}
