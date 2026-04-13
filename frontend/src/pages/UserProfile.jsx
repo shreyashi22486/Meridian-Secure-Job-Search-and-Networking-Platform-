@@ -7,7 +7,7 @@ import Icon from '../components/Icons';
 
 export default function UserProfile() {
     const { id } = useParams();
-    const { user: _me } = useAuth();
+    useAuth();
     const navigate = useNavigate();
     const [profile, setProfile] = useState(null);
     const [avatarUrl, setAvatarUrl] = useState(null);

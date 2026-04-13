@@ -20,7 +20,7 @@ export default function JobDetail() {
     const [applied, setApplied] = useState(false);
 
     const isAdmin = user?.role?.toLowerCase() === 'admin';
-    const _isRecruiter = user?.role?.toLowerCase() === 'recruiter' || isAdmin;
+
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
     const [updating, setUpdating] = useState(false);

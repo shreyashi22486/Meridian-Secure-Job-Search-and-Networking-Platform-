@@ -33,19 +33,6 @@ export default function Login() {
         }
     };
 
-    const _handle2FA = async (e) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        try {
-            await verify2FA(otpCode, tempToken);
-            window.location.href = '/dashboard';
-        } catch (err) {
-            setError(err.response?.data?.detail || 'Invalid OTP code');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     if (tempToken) {
         return (
