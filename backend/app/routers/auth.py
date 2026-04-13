@@ -278,13 +278,11 @@ async def login(
     if user.is_totp_enabled:
         # Create a short-lived temp token for 2FA verification
         # This token is NOT a session token — it only authorizes the 2FA step
-        from app.security.jwt import create_access_token
-        temp_token = create_access_token(
+        from app.security.jwt import create_temp_token
+        temp_token = create_temp_token(
             user_id=str(user.id),
-            role=user.role.value,
             session_id="pending-2fa",
             fingerprint=create_fingerprint(client_ip, request.headers.get("User-Agent", "")),
-            expires_delta=timedelta(minutes=5),  # 5 min to complete 2FA
         )
 
         log_audit(db, "login_2fa_required", user_id=user.id, ip_address=client_ip,

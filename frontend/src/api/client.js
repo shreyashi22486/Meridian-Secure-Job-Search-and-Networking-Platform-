@@ -21,8 +21,13 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Auto-refresh on 401 (skip for auth endpoints and initial user fetch)
+// Auto-refresh on 401 with deduplication to prevent race conditions.
+// When multiple requests get 401 simultaneously (e.g., during 2FA setup when
+// the access token expires), only ONE refresh request is made. All other 401'd
+// requests wait for it, then retry with the new token.
 const skipRefreshUrls = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout', '/auth/csrf', '/users/me'];
+let refreshPromise = null; // Shared promise for concurrent refresh deduplication
+
 api.interceptors.response.use(
     (res) => res,
     async (error) => {
@@ -31,7 +36,13 @@ api.interceptors.response.use(
         if (error.response?.status === 401 && !original._retry && !shouldSkip) {
             original._retry = true;
             try {
-                await api.post('/auth/refresh');
+                // If a refresh is already in progress, wait for it
+                if (!refreshPromise) {
+                    refreshPromise = api.post('/auth/refresh').finally(() => {
+                        refreshPromise = null;
+                    });
+                }
+                await refreshPromise;
                 return api(original);
             } catch {
                 // Refresh failed — let the calling code handle it

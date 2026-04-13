@@ -933,8 +933,9 @@ export default function Profile() {
                             <img src={`data:image/png;base64,${qrCode}`} alt="TOTP QR Code" className="qr-code" />
                             <div className="form-group">
                                 <label>Enter the 6-digit code to confirm:</label>
-                                <input value={confirmCode} onChange={e => setConfirmCode(e.target.value)}
-                                    maxLength={6} placeholder="000000" className="input-otp" />
+                                <input value={confirmCode} onChange={e => setConfirmCode(e.target.value.replace(/\D/g, ''))}
+                                    maxLength={6} placeholder="000000" className="input-otp"
+                                    inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" />
                             </div>
                             <button className="btn btn-primary" onClick={confirm2FA}>Confirm & Enable 2FA</button>
                         </div>
