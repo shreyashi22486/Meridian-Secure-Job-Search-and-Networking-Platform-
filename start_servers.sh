@@ -7,7 +7,7 @@ sleep 2
 echo "Starting backend..."
 cd /home/iiitd/Secure-Job-Portal/backend
 source venv/bin/activate
-nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload > /tmp/backend.log 2>&1 &
+nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload > /tmp/backend.log 2>&1 &
 BACKEND_PID=$!
 
 echo "Starting frontend..."
