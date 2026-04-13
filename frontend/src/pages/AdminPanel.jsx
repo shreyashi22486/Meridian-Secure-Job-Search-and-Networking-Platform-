@@ -247,15 +247,16 @@ export default function AdminPanel() {
                     {logLoading ? (
                         <div className="empty-state"><div className="spinner" /></div>
                     ) : (
-                        <table className="data-table" style={{ tableLayout: 'fixed', width: '100%', fontSize: '0.82rem' }}>
+                        <div style={{ overflowX: 'auto' }}>
+                        <table className="data-table" style={{ minWidth: '1100px', width: '100%', fontSize: '0.82rem' }}>
                             <colgroup>
-                                <col style={{ width: '12%' }} />
-                                <col style={{ width: '15%' }} />
-                                <col style={{ width: '10%' }} />
-                                <col style={{ width: '12%' }} />
-                                <col style={{ width: '11%' }} />
-                                <col style={{ width: '5%' }} />
-                                <col style={{ width: '35%' }} />
+                                <col style={{ width: '155px' }} />
+                                <col style={{ width: '210px' }} />
+                                <col style={{ width: '130px' }} />
+                                <col style={{ width: '130px' }} />
+                                <col style={{ width: '150px' }} />
+                                <col style={{ width: '50px' }} />
+                                <col />
                             </colgroup>
                             <thead>
                                 <tr>
@@ -271,7 +272,7 @@ export default function AdminPanel() {
                             <tbody>
                                 {logs.map((log) => (
                                     <tr key={log.id}>
-                                        <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
                                             {new Date(log.created_at).toLocaleString('en-IN', {
                                                 timeZone: 'Asia/Kolkata',
                                                 dateStyle: 'short',
@@ -280,11 +281,11 @@ export default function AdminPanel() {
                                         </td>
                                         <td><span className="badge badge-action" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>{log.action}</span></td>
                                         <td>
-                                            <div style={{ fontSize: '0.72rem', overflowX: 'auto', whiteSpace: 'nowrap' }} title={log.user_id || ''}>
+                                            <div style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }} title={log.user_id || ''}>
                                                 {log.user_email || (log.user_id ? log.user_id.slice(0, 8) + '…' : '—')}
                                             </div>
                                         </td>
-                                        <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.ip_address || '—'}</td>
+                                        <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{log.ip_address || '—'}</td>
                                         <td>
                                             <div className="mono" style={{ fontSize: '0.65rem', overflowX: 'auto', whiteSpace: 'nowrap' }}>
                                                 {log.entry_hash || '—'}
@@ -310,6 +311,7 @@ export default function AdminPanel() {
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     )}
 
                     {/* Pagination */}
