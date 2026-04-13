@@ -12,7 +12,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import or_
 from typing import Optional
-from fastapi.security import APIKeyCookie
 
 from app.database import get_db
 from app.models.user import User
