@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icons';
@@ -33,13 +33,22 @@ export default function Messages() {
     const [searchParams, setSearchParams] = useSearchParams();
     const autoOpenHandled = useRef(false);
 
+    const fetchedAvatars = useRef(new Set());
+
     // Load avatar for a user
-    const loadAvatar = async (userId) => {
-        if (avatarCache[userId] !== undefined) return;
+    const loadAvatar = useCallback(async (userId) => {
+        if (fetchedAvatars.current.has(userId)) return;
+        fetchedAvatars.current.add(userId);
+        
         setAvatarCache(prev => ({ ...prev, [userId]: null })); // mark as loading
-        const url = await userApi.getUserAvatarBlob(userId);
-        setAvatarCache(prev => ({ ...prev, [userId]: url }));
-    };
+        try {
+            const url = await userApi.getUserAvatarBlob(userId);
+            setAvatarCache(prev => ({ ...prev, [userId]: url }));
+        } catch {
+            // Error loading avatar, remove from requested list so it could be retried later
+            fetchedAvatars.current.delete(userId);
+        }
+    }, []);
 
     // Get the other person in a direct convo
     const getOther = (conv) => {
@@ -47,8 +56,9 @@ export default function Messages() {
         return other || { user_id: null, name: 'Unknown' };
     };
 
+    const targetUserId = searchParams.get('user');
+
     // Fetch conversations
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         const fetch = async () => {
             try {
@@ -90,10 +100,9 @@ export default function Messages() {
             }
         };
         fetch();
-    }, []);
+    }, [loadAvatar, targetUserId, user?.id, setSearchParams]);
 
     // Fetch messages for active conversation
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (!activeConv) return;
         const fetchMessages = async () => {
@@ -122,7 +131,7 @@ export default function Messages() {
         }, 3000);
 
         return () => clearInterval(pollRef.current);
-    }, [activeConv?.id]);
+    }, [activeConv]);
 
     // Scroll to bottom on new messages
     useEffect(() => {

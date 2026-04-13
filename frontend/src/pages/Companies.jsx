@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { companyApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -19,7 +19,7 @@ export default function Companies() {
 
     const isRecruiterOrAdmin = user?.role?.toLowerCase() === 'recruiter' || user?.role?.toLowerCase() === 'admin';
 
-    const fetchCompanies = async (skip = 0) => {
+    const fetchCompanies = useCallback(async (skip = 0) => {
         setLoading(true);
         try {
             const params = { skip, limit };
@@ -32,10 +32,9 @@ export default function Companies() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [search]);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { fetchCompanies(page * limit); }, [page]);
+    useEffect(() => { fetchCompanies(page * limit); }, [page, fetchCompanies]);
 
     const handleSearch = (e) => {
         e.preventDefault();

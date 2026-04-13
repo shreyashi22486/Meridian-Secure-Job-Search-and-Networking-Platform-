@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { jobApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -26,7 +26,7 @@ export default function Jobs() {
     const [recLoading, setRecLoading] = useState(false);
     const [userSkills, setUserSkills] = useState([]);
 
-    const fetchJobs = async (skip = 0) => {
+    const fetchJobs = useCallback(async (skip = 0) => {
         setLoading(true);
         try {
             const params = { skip, limit };
@@ -44,10 +44,9 @@ export default function Jobs() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [keyword, location, workType, jobType, minSalary, status]);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { fetchJobs(page * limit); }, [page]);
+    useEffect(() => { fetchJobs(page * limit); }, [page, fetchJobs]);
 
     // Fetch recommended jobs for logged-in users
     useEffect(() => {
