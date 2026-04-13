@@ -28,12 +28,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Force HTTPS (even in LAN with self-signed certs)
         response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains"
+            "max-age=31536000; includeSubDomains; preload"
         )
 
         # Content Security Policy — restrict resource loading
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
+            "upgrade-insecure-requests; "
             "script-src 'self'; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "

@@ -1,16 +1,16 @@
 # ─── Stage 1: Build ──────────────────────────────────────────────────────
-FROM node:20-alpine AS build
+FROM node:20.18-alpine AS build
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --no-audit --no-fund
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
 COPY . .
 RUN npm run build
 
 # ─── Stage 2: Serve with Nginx ──────────────────────────────────────────
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
 # Install curl for healthcheck
 RUN apk add --no-cache curl

@@ -45,7 +45,7 @@ def _job_response(job: Job) -> JobResponse:
         salary_max=job.salary_max,
         application_deadline=job.application_deadline,
         is_active=job.is_active,
-        posted_by=str(job.posted_by) if job.posted_by else None,
+        posted_by=None,  # Omit from public response to prevent UUID leakage (A2.9)
         created_at=job.created_at,
         updated_at=job.updated_at,
     )
@@ -148,7 +148,9 @@ async def search_jobs(
 
     # Keyword search in title and description
     if keyword:
-        search_term = f"%{keyword}%"
+        from app.routers.users import _escape_ilike
+        safe_keyword = _escape_ilike(keyword)
+        search_term = f"%{safe_keyword}%"
         query = query.filter(
             or_(
                 Job.title.ilike(search_term),

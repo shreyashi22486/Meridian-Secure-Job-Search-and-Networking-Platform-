@@ -1,41 +1,57 @@
 """
-JWT token creation, verification, and device fingerprinting.
+JWT creation and verification using PyJWT.
 
 Security features:
-- Short-lived access tokens (15 min) limit exposure window
-- Refresh tokens enable session continuity without long-lived access
-- Device fingerprint (IP+UA hash) detects stolen cookies used from different devices
-- JTI (unique ID) enables refresh token rotation with reuse detection
-- Session ID links tokens to server-side session for revocation
+- HttpOnly cookie storage (no JavaScript access)
+- Short-lived access tokens (15 min default)
+- Refresh token rotation with device binding
+- Token type claim prevents token misuse
+- Hardcoded algorithm prevents algorithm confusion attacks
 
-What it prevents: Session hijacking, cookie theft from different devices,
-indefinite session persistence.
+Migration note: Replaced python-jose (unmaintained, 3 CVEs) with PyJWT.
 """
 
-import uuid
 import hashlib
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Dict, Any, Optional
 
-from jose import jwt, JWTError
+import jwt as pyjwt
+from jwt.exceptions import PyJWTError
 
 from app.config import settings
 
 
 class TokenError(Exception):
-    """Raised when token creation or verification fails."""
-    def __init__(self, message: str):
-        self.message = message
-        super().__init__(self.message)
+    """Raised when a token is invalid, expired, or tampered with."""
+    pass
 
 
-def create_fingerprint(ip_address: str, user_agent: str) -> str:
+# ─── Device Fingerprinting ──────────────────────────────────────────────
+
+
+def compute_fingerprint(ip: str, user_agent: str) -> str:
     """
-    Create a device fingerprint from IP and User-Agent.
-    SHA256 hash prevents leaking raw values if token is somehow exposed.
+    Create a SHA-256 fingerprint from the client's IP and User-Agent.
+    This binds tokens to the originating device.
     """
-    raw = f"{ip_address}:{user_agent}"
+    raw = f"{ip}:{user_agent or 'unknown'}"
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+# Backward-compatible alias
+create_fingerprint = compute_fingerprint
+
+
+def verify_token_fingerprint(payload: Dict[str, Any], ip: str, user_agent: str) -> bool:
+    """
+    Verify the token's embedded fingerprint matches the current request.
+    Returns False if the token is being used from a different device.
+    """
+    expected = compute_fingerprint(ip, user_agent)
+    token_fp = payload.get("fp", "")
+    return token_fp == expected
+
+# ─── Token Creation ─────────────────────────────────────────────────────
 
 
 def create_access_token(
@@ -43,34 +59,23 @@ def create_access_token(
     role: str,
     session_id: str,
     fingerprint: str,
-    expires_delta: Optional[timedelta] = None,
 ) -> str:
     """
     Create a short-lived access token.
-
-    Claims:
-    - sub: user ID
-    - role: user role for RBAC
-    - type: "access"
-    - jti: unique token ID
-    - sid: session ID (links to DB session)
-    - fp: device fingerprint
+    Claims include user identity, role, session binding, and device fingerprint.
     """
     now = datetime.now(timezone.utc)
-    expire = now + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
-
     payload = {
-        "sub": str(user_id),
+        "sub": user_id,
         "role": role,
         "type": "access",
-        "jti": str(uuid.uuid4()),
-        "sid": str(session_id),
-        "fp": fingerprint,
+        "jti": _generate_jti(),
+        "sid": session_id,          # Bind to server-side session
+        "fp": fingerprint,          # Bind to device
         "iat": now,
-        "exp": expire,
+        "exp": now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
-
-    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return pyjwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
 def create_refresh_token(
@@ -78,51 +83,71 @@ def create_refresh_token(
     session_id: str,
     fingerprint: str,
     jti: Optional[str] = None,
-    expires_delta: Optional[timedelta] = None,
 ) -> tuple[str, str]:
     """
     Create a long-lived refresh token.
-    Returns (token_string, jti) — the JTI is stored in the sessions table
-    for rotation tracking.
+    Returns (token_string, jti) — the JTI is stored server-side for rotation.
     """
     now = datetime.now(timezone.utc)
-    expire = now + (expires_delta or timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES))
-    token_jti = jti or str(uuid.uuid4())
-
+    token_jti = jti or _generate_jti()
     payload = {
-        "sub": str(user_id),
+        "sub": user_id,
         "type": "refresh",
         "jti": token_jti,
-        "sid": str(session_id),
+        "sid": session_id,
         "fp": fingerprint,
         "iat": now,
-        "exp": expire,
+        "exp": now + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
     }
-
-    token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    token = pyjwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
     return token, token_jti
+
+
+def create_temp_token(user_id: str, session_id: str, fingerprint: str) -> str:
+    """
+    Create a temporary token for 2FA verification flow.
+    Very short-lived (5 minutes), single purpose.
+    """
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": user_id,
+        "type": "temp_2fa",
+        "jti": _generate_jti(),
+        "sid": session_id,
+        "fp": fingerprint,
+        "iat": now,
+        "exp": now + timedelta(minutes=5),
+    }
+    return pyjwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+# ─── Token Verification ─────────────────────────────────────────────────
 
 
 def decode_token(token: str) -> Dict[str, Any]:
     """
-    Decode and validate a JWT token.
-    Raises TokenError on any failure — caller must handle.
+    Decode and verify a JWT.
+    Raises TokenError if invalid, expired, or tampered with.
+
+    Security: algorithms is hardcoded to prevent algorithm confusion attacks.
     """
     try:
-        payload = jwt.decode(
+        payload = pyjwt.decode(
             token,
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM],
         )
         return payload
-    except JWTError as e:
+    except pyjwt.ExpiredSignatureError:
+        raise TokenError("Token has expired")
+    except PyJWTError as e:
         raise TokenError(f"Invalid token: {str(e)}")
 
 
-def verify_token_fingerprint(token_payload: Dict[str, Any], ip_address: str, user_agent: str) -> bool:
-    """
-    Verify that the token's device fingerprint matches the current request.
-    Returns False if fingerprints don't match (cookie possibly stolen).
-    """
-    expected_fp = create_fingerprint(ip_address, user_agent)
-    return token_payload.get("fp") == expected_fp
+# ─── Helpers ─────────────────────────────────────────────────────────────
+
+
+def _generate_jti() -> str:
+    """Generate a unique token identifier."""
+    import uuid
+    return str(uuid.uuid4())

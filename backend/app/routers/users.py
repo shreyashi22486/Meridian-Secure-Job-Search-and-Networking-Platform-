@@ -39,6 +39,11 @@ from app.utils import get_client_ip, log_audit
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
 
+def _escape_ilike(q: str) -> str:
+    """Escape SQL LIKE/ILIKE wildcard characters to prevent wildcard injection (A3.6)."""
+    return q.replace("%", r"\%").replace("_", r"\_")
+
+
 # ─── Helpers ────────────────────────────────────────────────────────────
 
 DEFAULT_PRIVACY = {
@@ -153,10 +158,11 @@ async def search_users(
     """Search users by name or email (for messaging, connections, etc.)."""
     if len(q) < 2:
         return {"users": []}
+    safe_q = _escape_ilike(q)
     users = db.query(User).filter(
         or_(
-            User.full_name.ilike(f"%{q}%"),
-            User.email.ilike(f"%{q}%"),
+            User.full_name.ilike(f"%{safe_q}%"),
+            User.email.ilike(f"%{safe_q}%"),
         ),
         User.id != current_user.id,
     ).limit(10).all()

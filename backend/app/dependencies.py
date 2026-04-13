@@ -22,7 +22,11 @@ from app.security.jwt import decode_token, verify_token_fingerprint, TokenError
 
 
 def _get_client_ip(request: Request) -> str:
-    """Extract client IP address."""
+    """Get client IP from Nginx-set X-Real-IP header (consistent with rate limiter)."""
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+    # Fallback for dev mode without Nginx
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0].strip()

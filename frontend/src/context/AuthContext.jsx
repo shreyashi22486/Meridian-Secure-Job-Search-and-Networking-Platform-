@@ -21,10 +21,21 @@ export function AuthProvider({ children }) {
     }, []);
 
     useEffect(() => {
-        // Fetch CSRF token on mount
-        authApi.getCSRF().then(({ data }) => {
-            localStorage.setItem('csrf_token', data.csrf_token);
-        }).catch(() => { });
+        // Fetch CSRF token with retry logic (A6.4)
+        const fetchCSRF = async (retries = 3) => {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const { data } = await authApi.getCSRF();
+                    localStorage.setItem('csrf_token', data.csrf_token);
+                    return;
+                } catch {
+                    if (i < retries - 1) {
+                        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+                    }
+                }
+            }
+        };
+        fetchCSRF();
         fetchUser();
     }, [fetchUser]);
 

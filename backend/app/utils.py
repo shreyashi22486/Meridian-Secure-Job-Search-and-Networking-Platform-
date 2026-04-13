@@ -17,7 +17,11 @@ _HASH_TS_FMT = "%Y-%m-%dT%H:%M:%S.%f"
 
 
 def get_client_ip(request: Request) -> str:
-    """Extract client IP, respecting X-Forwarded-For behind reverse proxy."""
+    """Get client IP from Nginx-set X-Real-IP header (trustworthy, not spoofable)."""
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+    # Fallback for direct access (dev mode without Nginx)
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -53,49 +57,58 @@ def log_audit(
     details: dict = None,
 ) -> None:
     """
-    Record a security-relevant action in the audit log.
-
-    Tamper-evident features:
-    - Each entry includes a SHA-256 hash of its content + the previous entry's hash
-    - Each entry is digitally signed with the server's PKI private key
-    - This creates a blockchain-style chain — any modification breaks the chain
+    Create an audit log entry with tamper-evident hash chain and PKI signature.
+    Uses PostgreSQL advisory lock to prevent race conditions in the hash chain (A9.2).
     """
-    # Get the previous entry's hash (or genesis hash)
-    prev_entry = db.query(AuditLog).order_by(AuditLog.id.desc()).first()
-    prev_hash = prev_entry.entry_hash if (prev_entry and prev_entry.entry_hash) else "0" * 64
+    from datetime import timezone
+    from sqlalchemy import text
 
-    # Capture exact timestamp for both hashing and storage
-    now = datetime.utcnow()
-    timestamp = _format_ts(now)
-
-    # Compute this entry's hash
-    entry_hash = _compute_entry_hash(
-        action=action,
-        user_id=str(user_id) if user_id else "",
-        ip_address=ip_address or "",
-        timestamp=timestamp,
-        details=details or {},
-        prev_hash=prev_hash,
-    )
-
-    # Sign the entry hash with PKI
     try:
-        signature = sign_data(entry_hash.encode("utf-8"))
-    except Exception:
-        signature = None  # Don't block logging if PKI is unavailable
+        # Advisory lock to serialize hash chain writes (A9.2)
+        db.execute(text("SELECT pg_advisory_lock(42)"))
 
-    entry = AuditLog(
-        user_id=user_id,
-        action=action,
-        ip_address=ip_address,
-        details=details,
-        prev_hash=prev_hash,
-        entry_hash=entry_hash,
-        signature=signature,
-        created_at=now,
-    )
-    db.add(entry)
-    db.commit()
+        # Get previous entry's hash for chaining
+        prev_entry = db.query(AuditLog).order_by(AuditLog.id.desc()).first()
+        prev_hash = prev_entry.entry_hash if (prev_entry and prev_entry.entry_hash) else "0" * 64
+
+        # Build the entry
+        ts = datetime.now(timezone.utc)
+
+        # Compute the hash of this entry
+        entry_hash = _compute_entry_hash(
+            action=action,
+            user_id=str(user_id) if user_id else "",
+            ip_address=ip_address or "",
+            timestamp=_format_ts(ts),
+            details=details or {},
+            prev_hash=prev_hash,
+        )
+
+        # PKI sign the hash
+        try:
+            signature = sign_data(entry_hash.encode("utf-8"))
+        except Exception:
+            signature = None  # Don't block logging if PKI is unavailable
+
+        entry = AuditLog(
+            user_id=user_id,
+            action=action,
+            ip_address=ip_address,
+            details=details,
+            prev_hash=prev_hash,
+            entry_hash=entry_hash,
+            signature=signature,
+            created_at=ts,
+        )
+
+        db.add(entry)
+        db.commit()
+    finally:
+        # Always release the advisory lock
+        try:
+            db.execute(text("SELECT pg_advisory_unlock(42)"))
+        except Exception:
+            pass
 
     # Auto-mine a new block if enough entries have accumulated
     try:
@@ -136,4 +149,3 @@ def backfill_audit_hashes(db: DBSession) -> int:
 
     db.commit()
     return len(logs)
-

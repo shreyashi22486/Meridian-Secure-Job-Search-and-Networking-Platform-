@@ -1,5 +1,10 @@
 # ─────────────────────────────────────────────────────────────────────────
 # Secure Job Portal — Local Development with Docker Compose
+#
+# Security hardening:
+#   - PostgreSQL NOT exposed to host network (A5.3)
+#   - Network segmentation between frontend and backend (A11.5)
+#
 # Usage:  docker compose -f docker-compose.local.yml up --build
 # ─────────────────────────────────────────────────────────────────────────
 
@@ -12,8 +17,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-secure_job_portal}
-    ports:
-      - "5432:5432"
+    # Port NOT exposed to host — access via backend only (A5.3)
     volumes:
       - pgdata_dev:/var/lib/postgresql/data
     healthcheck:
@@ -23,7 +27,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - sjp-network-dev
+      - backend-net-dev
 
   # ── Backend (FastAPI + Uvicorn) ────────────────────────────────────
   backend:
@@ -64,7 +68,8 @@ services:
       start_period: 40s
     restart: unless-stopped
     networks:
-      - sjp-network-dev
+      - backend-net-dev
+      - frontend-net-dev
 
   # ── Frontend (Nginx) ──────────────────────────────────────────────
   frontend:
@@ -85,7 +90,7 @@ services:
       start_period: 20s
     restart: unless-stopped
     networks:
-      - sjp-network-dev
+      - frontend-net-dev
 
 volumes:
   pgdata_dev:
@@ -94,5 +99,7 @@ volumes:
   pki_data_dev:
 
 networks:
-  sjp-network-dev:
+  backend-net-dev:
+    driver: bridge
+  frontend-net-dev:
     driver: bridge

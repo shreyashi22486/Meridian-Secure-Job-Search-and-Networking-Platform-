@@ -13,7 +13,7 @@ Simulates core blockchain concepts:
 import hashlib
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session as DBSession
 
@@ -130,7 +130,7 @@ def create_block(db: DBSession) -> Block | None:
     merkle_root = build_merkle_tree(entry_hashes)
 
     # 4. Construct block header and mine
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     block_header = f"{next_block_num}|{prev_block_hash}|{merkle_root}|{now.isoformat()}"
     nonce, block_hash = mine_block(block_header, DIFFICULTY)
 
@@ -190,7 +190,7 @@ def ensure_genesis(db: DBSession) -> Block:
     if genesis:
         return genesis
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     block_header = f"0|{'0' * 64}|{'0' * 64}|{now.isoformat()}"
     nonce, block_hash = mine_block(block_header, DIFFICULTY)
 
@@ -383,7 +383,7 @@ def export_chain(db: DBSession) -> dict:
 
     chain_data = {
         "chain_length": len(blocks),
-        "exported_at": datetime.utcnow().isoformat() + "Z",
+        "exported_at": datetime.now(timezone.utc).isoformat() + "Z",
         "blocks": [],
     }
 

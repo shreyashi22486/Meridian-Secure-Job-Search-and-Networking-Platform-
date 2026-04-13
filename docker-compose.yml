@@ -2,6 +2,11 @@
 # Secure Job Portal — Docker Compose (Server Deployment)
 # Pulls pre-built images from GHCR (pushed by CI/CD pipeline)
 #
+# Security hardening:
+#   - Network segmentation: frontend cannot reach postgres (A11.5)
+#   - Backend bound to localhost only
+#   - Named volumes for data persistence
+#
 # Usage:
 #   docker compose pull && docker compose up -d   # Pull latest & start
 #   docker compose logs -f                         # Follow logs
@@ -28,7 +33,7 @@ services:
       start_period: 30s
     restart: unless-stopped
     networks:
-      - sjp-network
+      - backend-net
 
   # ── Backend (Pre-built from GHCR) ─────────────────────────────────
   backend:
@@ -65,7 +70,8 @@ services:
       start_period: 40s
     restart: unless-stopped
     networks:
-      - sjp-network
+      - backend-net
+      - frontend-net
 
   # ── Frontend (Pre-built from GHCR — Nginx + static files) ─────────
   frontend:
@@ -87,7 +93,7 @@ services:
       start_period: 20s
     restart: unless-stopped
     networks:
-      - sjp-network
+      - frontend-net
 
 volumes:
   pgdata:
@@ -100,6 +106,9 @@ volumes:
     name: sjp-pki-data
 
 networks:
-  sjp-network:
-    name: sjp-network
+  backend-net:
+    name: sjp-backend-net
+    driver: bridge
+  frontend-net:
+    name: sjp-frontend-net
     driver: bridge

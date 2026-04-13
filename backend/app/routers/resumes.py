@@ -246,11 +246,15 @@ async def download_resume(
               ip_address=get_client_ip(request),
               details={"resume_id": resume_id, "owner_id": str(resume.user_id)})
 
+    # Sanitize filename for Content-Disposition header (A3.3)
+    import re
+    safe_filename = re.sub(r'[^\w\s\-.]', '_', resume.original_filename)
+
     return StreamingResponse(
         BytesIO(decrypted_content),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="{resume.original_filename}"',
+            "Content-Disposition": f'attachment; filename="{safe_filename}"',
             "Content-Length": str(len(decrypted_content)),
         },
     )

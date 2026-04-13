@@ -12,6 +12,7 @@ Security features:
 """
 
 import uuid
+import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -47,6 +48,17 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_DURATION_MINUTES = 15
 
+# Grace period for concurrent refresh requests (A1.4)
+REFRESH_GRACE_SECONDS = 5
+
+
+def _safe_ua(request: Request) -> str:
+    """Sanitize User-Agent for audit logs — truncate and strip control chars (A9.1)."""
+    ua = request.headers.get("User-Agent", "")
+    # Strip control characters and null bytes
+    ua = re.sub(r'[\x00-\x1f\x7f]', '', ua)
+    return ua[:512]
+
 
 def _set_auth_cookies(
     response: Response,
@@ -59,7 +71,7 @@ def _set_auth_cookies(
         value=access_token,
         httponly=True,
         secure=settings.SECURE_COOKIES,
-        samesite="lax",
+        samesite="strict",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -178,7 +190,7 @@ async def register(
     # Audit log
     log_audit(db, "user_registered", user_id=user.id, 
               ip_address=get_client_ip(request),
-              details={"user_agent": request.headers.get("User-Agent")})
+              details={"user_agent": _safe_ua(request)})
 
     # Create session and return tokens
     return _create_session_and_tokens(db, user, request, response)
@@ -208,7 +220,12 @@ async def login(
 
     if not user:
         # Fake Argon2 verification to prevent timing attacks
-        hash_password("fake_password_to_waste_time")
+        # Timing attack prevention: run verify (not hash) to match the code path
+        # when user exists, making response time indistinguishable (A1.1)
+        verify_password(
+            "fake_password_to_waste_time",
+            "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -222,8 +239,8 @@ async def login(
         )
 
     # Check account lockout
-    if user.locked_until and user.locked_until > datetime.utcnow():
-        remaining = (user.locked_until - datetime.utcnow()).seconds // 60
+    if user.locked_until and user.locked_until > datetime.now(timezone.utc):
+        remaining = (user.locked_until - datetime.now(timezone.utc)).seconds // 60
         log_audit(db, "login_locked_out", user_id=user.id, ip_address=client_ip)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -236,7 +253,7 @@ async def login(
 
         # Lock account if too many failures
         if user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
-            user.locked_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
             log_audit(
                 db, "account_locked",
                 user_id=user.id, ip_address=client_ip,
@@ -246,7 +263,7 @@ async def login(
         db.commit()
 
         log_audit(db, "login_failed", user_id=user.id, ip_address=client_ip,
-                  details={"user_agent": request.headers.get("User-Agent")})
+                  details={"user_agent": _safe_ua(request)})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -271,7 +288,7 @@ async def login(
         )
 
         log_audit(db, "login_2fa_required", user_id=user.id, ip_address=client_ip,
-                  details={"user_agent": request.headers.get("User-Agent")})
+                  details={"user_agent": _safe_ua(request)})
 
         return LoginResponse(
             message="2FA verification required",
@@ -281,7 +298,7 @@ async def login(
 
     # No 2FA — create session directly
     log_audit(db, "login_success", user_id=user.id, ip_address=client_ip,
-              details={"user_agent": request.headers.get("User-Agent")})
+              details={"user_agent": _safe_ua(request)})
     result = _create_session_and_tokens(db, user, request, response)
 
     return LoginResponse(
@@ -332,7 +349,7 @@ async def verify_2fa(
     client_ip = get_client_ip(request)
     if not verify_totp(user.totp_secret, data.code, str(user.id), db):
         log_audit(db, "2fa_failed", user_id=user.id, ip_address=client_ip,
-                  details={"user_agent": request.headers.get("User-Agent")})
+                  details={"user_agent": _safe_ua(request)})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid OTP code",
@@ -340,7 +357,7 @@ async def verify_2fa(
 
     # Success — create full session
     log_audit(db, "login_success_2fa", user_id=user.id, ip_address=client_ip,
-              details={"user_agent": request.headers.get("User-Agent")})
+              details={"user_agent": _safe_ua(request)})
     return _create_session_and_tokens(db, user, request, response)
 
 
@@ -375,7 +392,7 @@ async def setup_2fa(
 
     log_audit(db, "2fa_setup_initiated", user_id=current_user.id,
               ip_address=get_client_ip(request),
-              details={"user_agent": request.headers.get("User-Agent")})
+              details={"user_agent": _safe_ua(request)})
 
     return Setup2FAResponse(
         qr_code_base64=qr_base64,
@@ -419,7 +436,7 @@ async def confirm_2fa(
 
     log_audit(db, "2fa_enabled", user_id=current_user.id,
               ip_address=get_client_ip(request),
-              details={"user_agent": request.headers.get("User-Agent")})
+              details={"user_agent": _safe_ua(request)})
 
     return TokenResponse(
         message="2FA has been enabled successfully",
@@ -487,9 +504,19 @@ async def refresh_token(
         )
 
     # REUSE DETECTION: if the session's current JTI doesn't match,
-    # this is a replayed/stolen token → revoke ALL user sessions
+    # this is a replayed/stolen token — but check for race condition first (A1.4)
     if session.refresh_token_jti != token_jti:
-        # Compromise detected! Revoke all sessions for this user
+        # Grace period: if the token was just rotated (e.g., two browser tabs
+        # racing to refresh), don't nuke all sessions — just reject this one.
+        if (session.updated_at and
+                (datetime.now(timezone.utc) - session.updated_at.replace(tzinfo=timezone.utc))
+                < timedelta(seconds=REFRESH_GRACE_SECONDS)):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token already rotated, please retry",
+            )
+
+        # Outside grace period → genuine reuse. Revoke all sessions for this user.
         db.query(Session).filter(Session.user_id == session.user_id).update(
             {"is_revoked": True}
         )
@@ -538,6 +565,7 @@ async def refresh_token(
 
     # Update session with new JTI (old JTI is now invalid)
     session.refresh_token_jti = new_jti
+    session.updated_at = datetime.now(timezone.utc)  # Track rotation time for grace period (A1.4)
     db.commit()
 
     _set_auth_cookies(response, access_token, new_refresh_token)
@@ -574,7 +602,7 @@ async def logout(
 
                 log_audit(db, "logout", user_id=payload.get("sub"),
                           ip_address=get_client_ip(request),
-                          details={"session_id": str(session_id), "user_agent": request.headers.get("User-Agent")})
+                          details={"session_id": str(session_id), "user_agent": _safe_ua(request)})
         except TokenError:
             pass  # Token invalid — still clear cookies
 
@@ -593,7 +621,7 @@ async def list_sessions(
     sessions = db.query(Session).filter(
         Session.user_id == current_user.id,
         Session.is_revoked.is_(False),
-        Session.expires_at > datetime.utcnow(),
+        Session.expires_at > datetime.now(timezone.utc),
     ).all()
 
     return {

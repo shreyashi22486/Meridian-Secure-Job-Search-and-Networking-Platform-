@@ -1,14 +1,16 @@
 """
 Input sanitization to prevent XSS attacks.
 
-Uses bleach to strip all HTML tags and attributes from text inputs.
+Uses nh3 (Rust-based HTML sanitizer) to strip all HTML tags from text inputs.
 Applied at the Pydantic schema level via validators.
+
+Migration note: Replaced deprecated bleach with nh3 for long-term maintainability.
 
 What it prevents: Stored XSS — malicious scripts embedded in user input
 fields that would execute when rendered by other users' browsers.
 """
 
-import bleach
+import nh3
 
 
 def sanitize_string(value: str) -> str:
@@ -20,7 +22,7 @@ def sanitize_string(value: str) -> str:
         return value
 
     # Strip ALL tags — no whitelist (job portal has no legitimate HTML input)
-    cleaned = bleach.clean(value, tags=[], attributes={}, strip=True)
+    cleaned = nh3.clean(value, tags=set())
 
     # Also strip any null bytes (used in some injection attacks)
     cleaned = cleaned.replace("\x00", "")

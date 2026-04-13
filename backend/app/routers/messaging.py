@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import func
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from cryptography.fernet import Fernet
 
 from app.database import get_db
@@ -380,7 +380,7 @@ async def list_messages(
     member = _check_member(db, conversation_id, current_user.id)
 
     # Mark as read
-    member.last_read_at = datetime.utcnow()
+    member.last_read_at = datetime.now(timezone.utc)
     db.commit()
 
     conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
@@ -422,15 +422,20 @@ async def list_messages(
 # ─── Member Key Exchange ───────────────────────────────────────────────
 
 
+class UpdatePublicKeyRequest(BaseModel):
+    """Validated schema for E2EE public key update (A10.5)."""
+    public_key: str
+
+
 @router.put("/conversations/{conversation_id}/public-key")
 async def update_public_key(
     conversation_id: str,
-    data: dict,  # {"public_key": "base64..."}
+    data: UpdatePublicKeyRequest,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Update the public key for E2EE key exchange in a direct conversation."""
     member = _check_member(db, conversation_id, current_user.id)
-    member.public_key = data.get("public_key")
+    member.public_key = data.public_key
     db.commit()
     return {"message": "Public key updated"}

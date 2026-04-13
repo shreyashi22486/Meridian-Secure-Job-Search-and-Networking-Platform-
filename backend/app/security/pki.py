@@ -82,15 +82,22 @@ def _load_public_key():
 
 def sign_data(data: bytes) -> str:
     """
-    Sign data with the server's RSA private key.
+    Sign data with the server's RSA private key using PSS padding.
+    Returns the signature as a base64-encoded string.
 
-    Returns a Base64-encoded signature string.
-    Uses PKCS1v15 padding with SHA-256 hash.
+    Migration note: New signatures use PSS; verify_signature() maintains
+    backward compatibility with existing PKCS1v15 signatures.
     """
     private_key = _load_private_key()
+    if not private_key:
+        raise ValueError("No private key available")
+
     signature = private_key.sign(
         data,
-        padding.PKCS1v15(),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH,
+        ),
         hashes.SHA256(),
     )
     return base64.b64encode(signature).decode("utf-8")
@@ -99,20 +106,45 @@ def sign_data(data: bytes) -> str:
 def verify_signature(data: bytes, signature_b64: str) -> bool:
     """
     Verify a signature against data using the server's RSA public key.
-
-    Returns True if valid, False if tampered or invalid.
+    Tries PSS padding first, then falls back to PKCS1v15 for backward
+    compatibility with signatures created before the PSS migration.
     """
+    public_key = _load_public_key()
+    if not public_key:
+        return False
+
     try:
-        public_key = _load_public_key()
-        signature = base64.b64decode(signature_b64)
+        raw_sig = base64.b64decode(signature_b64)
+    except Exception:
+        return False
+
+    # Try PSS first (current signing scheme)
+    try:
         public_key.verify(
-            signature,
+            raw_sig,
+            data,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH,
+            ),
+            hashes.SHA256(),
+        )
+        return True
+    except (InvalidSignature, Exception):
+        pass
+
+    # Fallback: try PKCS1v15 (legacy signatures)
+    try:
+        public_key.verify(
+            raw_sig,
             data,
             padding.PKCS1v15(),
             hashes.SHA256(),
         )
         return True
-    except (InvalidSignature, Exception):
+    except InvalidSignature:
+        return False
+    except Exception:
         return False
 
 

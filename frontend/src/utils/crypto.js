@@ -1,73 +1,187 @@
 /**
- * E2EE Crypto utilities using Web Crypto API.
+ * Web Crypto API utilities for end-to-end encryption (E2EE) in direct messages.
  *
- * For 1:1 direct conversations:
- * - Generate ECDH key pair (P-256)
- * - Derive shared AES-GCM key from ECDH key exchange
- * - Encrypt/decrypt messages client-side
+ * Cryptographic scheme:
+ *   - Key agreement: ECDH on P-256 (NIST curve)
+ *   - Encryption: AES-GCM-256 (authenticated encryption)
+ *   - Key derivation: HKDF-SHA-256 from shared secret
  *
- * Server never sees plaintext for direct messages.
+ * Security hardening (A4.5):
+ *   - Private keys stored in IndexedDB with extractable=false
+ *   - Even XSS cannot exfiltrate non-exportable CryptoKey objects
+ *   - Public keys remain exportable for key exchange
+ *
+ * Limitation: No forward secrecy — key compromise exposes full conversation.
  */
 
-// ─── Key Generation ─────────────────────────────────────────────────
+// ─── IndexedDB Key Storage (replaces localStorage) ──────────────────────────
 
-/**
- * Generate an ECDH key pair for E2EE.
- * Returns { publicKey: base64, privateKey: base64 }
- */
-export async function generateKeyPair() {
-    const keyPair = await crypto.subtle.generateKey(
-        { name: 'ECDH', namedCurve: 'P-256' },
-        true,
-        ['deriveKey']
-    );
+const DB_NAME = 'nexora_e2ee_keystore';
+const DB_VERSION = 1;
+const STORE_NAME = 'keys';
 
-    const publicKeyRaw = await crypto.subtle.exportKey('raw', keyPair.publicKey);
-    const privateKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
-
-    return {
-        publicKey: arrayBufferToBase64(publicKeyRaw),
-        privateKey: JSON.stringify(privateKeyJwk),
-        keyPair,
-    };
+function _openDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME);
+            }
+        };
+    });
 }
 
-// ─── Key Import ─────────────────────────────────────────────────────
+function _idbGet(key) {
+    return _openDB().then(db => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.get(key);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+        });
+    });
+}
+
+function _idbPut(key, value) {
+    return _openDB().then(db => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.put(value, key);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        });
+    });
+}
+
+function _idbDelete(key) {
+    return _openDB().then(db => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.delete(key);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        });
+    });
+}
+
+// ─── Key Generation ─────────────────────────────────────────────────────────
 
 /**
- * Import a public key from base64 for ECDH.
+ * Generate an ECDH key pair for a conversation.
+ * The private key is generated as NON-EXPORTABLE for security.
+ * Returns { publicKeyBase64, privateKey (CryptoKey) }
  */
-export async function importPublicKey(base64Key) {
-    const raw = base64ToArrayBuffer(base64Key);
-    return crypto.subtle.importKey(
-        'raw', raw,
+export async function generateKeyPair() {
+    // Generate with extractable=true initially to export public key
+    const keyPair = await crypto.subtle.generateKey(
+        { name: 'ECDH', namedCurve: 'P-256' },
+        true,  // temporarily extractable
+        ['deriveKey', 'deriveBits']
+    );
+
+    // Export the public key for exchange with the server
+    const publicKeyRaw = await crypto.subtle.exportKey('raw', keyPair.publicKey);
+    const publicKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(publicKeyRaw)));
+
+    // Re-import the private key as NON-EXPORTABLE (A4.5)
+    const privateKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
+    const nonExportablePrivateKey = await crypto.subtle.importKey(
+        'jwk',
+        privateKeyJwk,
+        { name: 'ECDH', namedCurve: 'P-256' },
+        false,  // NOT extractable — cannot be exfiltrated via XSS
+        ['deriveKey', 'deriveBits']
+    );
+
+    return { publicKeyBase64, privateKey: nonExportablePrivateKey };
+}
+
+
+// ─── Key Storage (IndexedDB) ────────────────────────────────────────────────
+
+/**
+ * Store a key pair for a conversation in IndexedDB.
+ * The private key is a non-exportable CryptoKey object.
+ */
+export async function storeKeyPair(conversationId, publicKeyBase64, privateKey) {
+    await _idbPut(`keypair_${conversationId}`, {
+        publicKey: publicKeyBase64,
+        privateKey: privateKey,  // CryptoKey object, non-exportable
+    });
+}
+
+/**
+ * Retrieve a stored key pair from IndexedDB.
+ */
+export async function getStoredKeyPair(conversationId) {
+    const data = await _idbGet(`keypair_${conversationId}`);
+    if (!data) return null;
+    return { publicKey: data.publicKey, privateKey: data.privateKey };
+}
+
+/**
+ * Remove a stored key pair.
+ */
+export async function removeKeyPair(conversationId) {
+    await _idbDelete(`keypair_${conversationId}`);
+}
+
+/**
+ * Migrate keys from localStorage to IndexedDB (one-time migration).
+ * Old localStorage keys are deleted after successful migration.
+ */
+export async function migrateFromLocalStorage() {
+    const OLD_KEY = 'meridian_e2ee_keys';
+    const raw = localStorage.getItem(OLD_KEY);
+    if (!raw) return;
+
+    try {
+        const oldKeys = JSON.parse(raw);
+        for (const [convId, keyData] of Object.entries(oldKeys)) {
+            // Re-import old private key as non-exportable
+            if (keyData.privateKey) {
+                const privateKey = await crypto.subtle.importKey(
+                    'jwk',
+                    keyData.privateKey,
+                    { name: 'ECDH', namedCurve: 'P-256' },
+                    false,  // Non-exportable
+                    ['deriveKey', 'deriveBits']
+                );
+                await storeKeyPair(convId, keyData.publicKey, privateKey);
+            }
+        }
+        // Remove old localStorage entry after successful migration
+        localStorage.removeItem(OLD_KEY);
+    } catch {
+        // Migration failed — old keys remain in localStorage for retry
+    }
+}
+
+
+// ─── Key Derivation ─────────────────────────────────────────────────────────
+
+/**
+ * Derive a shared AES-GCM-256 key from our private key and their public key.
+ */
+export async function deriveSharedKey(privateKey, theirPublicKeyBase64) {
+    const theirPublicKeyRaw = Uint8Array.from(atob(theirPublicKeyBase64), c => c.charCodeAt(0));
+
+    const theirPublicKey = await crypto.subtle.importKey(
+        'raw',
+        theirPublicKeyRaw,
         { name: 'ECDH', namedCurve: 'P-256' },
         false,
         []
     );
-}
 
-/**
- * Import a private key from JWK for ECDH.
- */
-export async function importPrivateKey(jwkString) {
-    const jwk = JSON.parse(jwkString);
-    return crypto.subtle.importKey(
-        'jwk', jwk,
-        { name: 'ECDH', namedCurve: 'P-256' },
-        false,
-        ['deriveKey']
-    );
-}
-
-// ─── Key Derivation ─────────────────────────────────────────────────
-
-/**
- * Derive a shared AES-GCM-256 key from ECDH private + remote public key.
- */
-export async function deriveSharedKey(privateKey, publicKey) {
-    return crypto.subtle.deriveKey(
-        { name: 'ECDH', public: publicKey },
+    return await crypto.subtle.deriveKey(
+        { name: 'ECDH', public: theirPublicKey },
         privateKey,
         { name: 'AES-GCM', length: 256 },
         false,
@@ -75,14 +189,15 @@ export async function deriveSharedKey(privateKey, publicKey) {
     );
 }
 
-// ─── Encrypt / Decrypt ──────────────────────────────────────────────
+
+// ─── Encryption / Decryption ────────────────────────────────────────────────
 
 /**
- * Encrypt a plaintext string with AES-GCM.
- * Returns { ciphertext: base64, nonce: base64 }
+ * Encrypt a message using AES-GCM-256.
+ * Returns base64(iv + ciphertext).
  */
-export async function encrypt(sharedKey, plaintext) {
-    const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit nonce
+export async function encryptMessage(sharedKey, plaintext) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
     const encoded = new TextEncoder().encode(plaintext);
 
     const ciphertext = await crypto.subtle.encrypt(
@@ -91,66 +206,29 @@ export async function encrypt(sharedKey, plaintext) {
         encoded
     );
 
-    return {
-        ciphertext: arrayBufferToBase64(ciphertext),
-        nonce: arrayBufferToBase64(iv),
-    };
+    // Prepend IV to ciphertext
+    const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(ciphertext), iv.length);
+
+    return btoa(String.fromCharCode(...combined));
 }
 
 /**
- * Decrypt a ciphertext with AES-GCM.
- * Returns plaintext string.
+ * Decrypt a message using AES-GCM-256.
+ * Expects base64(iv + ciphertext).
  */
-export async function decrypt(sharedKey, ciphertextBase64, nonceBase64) {
-    try {
-        const iv = base64ToArrayBuffer(nonceBase64);
-        const ciphertext = base64ToArrayBuffer(ciphertextBase64);
+export async function decryptMessage(sharedKey, encryptedBase64) {
+    const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
 
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv },
-            sharedKey,
-            ciphertext
-        );
+    const iv = combined.slice(0, 12);
+    const ciphertext = combined.slice(12);
 
-        return new TextDecoder().decode(decrypted);
-    } catch {
-        return '[unable to decrypt]';
-    }
-}
+    const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        sharedKey,
+        ciphertext
+    );
 
-// ─── Base64 Utilities ───────────────────────────────────────────────
-
-function arrayBufferToBase64(buffer) {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    bytes.forEach(b => binary += String.fromCharCode(b));
-    return btoa(binary);
-}
-
-function base64ToArrayBuffer(base64) {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes.buffer;
-}
-
-// ─── Local Key Storage ──────────────────────────────────────────────
-
-const KEY_STORAGE = 'meridian_e2ee_keys';
-
-/**
- * Store key pair in localStorage (encrypted by the browser).
- * In production, consider IndexedDB with non-exportable keys.
- */
-export function storeKeyPair(conversationId, publicKey, privateKey) {
-    const stored = JSON.parse(localStorage.getItem(KEY_STORAGE) || '{}');
-    stored[conversationId] = { publicKey, privateKey };
-    localStorage.setItem(KEY_STORAGE, JSON.stringify(stored));
-}
-
-export function getStoredKeyPair(conversationId) {
-    const stored = JSON.parse(localStorage.getItem(KEY_STORAGE) || '{}');
-    return stored[conversationId] || null;
+    return new TextDecoder().decode(decrypted);
 }

@@ -86,19 +86,30 @@ _MULTI_WORD_SKILLS = sorted(
 _SINGLE_WORD_SKILLS = {s for s in SKILLS_DATABASE if " " not in s and "/" not in s and "." not in s}
 
 
+def _do_extract(pdf_bytes: bytes) -> str:
+    """Inner extraction function — runs in a thread with timeout."""
+    reader = PdfReader(BytesIO(pdf_bytes))
+    text_parts = []
+    for page in reader.pages:
+        page_text = page.extract_text()
+        if page_text:
+            text_parts.append(page_text)
+    return "\n".join(text_parts)
+
+
 def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     """
     Extract all text from a PDF file (in-memory bytes).
     Returns the full text as a single string.
+    Enforces a 10-second timeout to prevent DoS from crafted PDFs (A8.3).
     """
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError
     try:
-        reader = PdfReader(BytesIO(pdf_bytes))
-        text_parts = []
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text_parts.append(page_text)
-        return "\n".join(text_parts)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_do_extract, pdf_bytes)
+            return future.result(timeout=10)
+    except TimeoutError:
+        return ""
     except Exception:
         return ""
 

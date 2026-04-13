@@ -124,7 +124,9 @@ async def list_companies(
     query = db.query(Company)
 
     if search:
-        query = query.filter(Company.name.ilike(f"%{search}%"))
+        from app.routers.users import _escape_ilike
+        safe_search = _escape_ilike(search)
+        query = query.filter(Company.name.ilike(f"%{safe_search}%"))
 
     total = query.count()
     companies = query.order_by(Company.created_at.desc()).offset(skip).limit(min(limit, 100)).all()

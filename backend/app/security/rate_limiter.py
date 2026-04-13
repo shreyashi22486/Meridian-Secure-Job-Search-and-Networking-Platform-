@@ -11,6 +11,7 @@ What it prevents: Brute-force login attempts, OTP guessing, upload abuse.
 
 import time
 from collections import defaultdict
+from threading import Lock
 from typing import Dict, List, Tuple
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -25,16 +26,12 @@ class SlidingWindowRateLimiter:
     current window and reject if the limit is exceeded.
     """
 
+    MAX_KEYS = 100_000  # Prevent memory exhaustion (A7.4)
+
     def __init__(self) -> None:
         # {key: [timestamp1, timestamp2, ...]}
         self._requests: Dict[str, List[float]] = defaultdict(list)
-
-    def _cleanup(self, key: str, window_seconds: int) -> None:
-        """Remove timestamps older than the window."""
-        cutoff = time.time() - window_seconds
-        self._requests[key] = [
-            ts for ts in self._requests[key] if ts > cutoff
-        ]
+        self._lock = Lock()
 
     def is_rate_limited(
         self, key: str, max_requests: int, window_seconds: int
@@ -45,17 +42,35 @@ class SlidingWindowRateLimiter:
         Returns:
             (is_limited, remaining_requests)
         """
-        self._cleanup(key, window_seconds)
-        current_count = len(self._requests[key])
+        with self._lock:
+            now = time.time()
+            window_start = now - window_seconds
 
-        if current_count >= max_requests:
-            return True, 0
+            # Clean old entries
+            self._requests[key] = [
+                t for t in self._requests[key] if t > window_start
+            ]
 
-        return False, max_requests - current_count
+            # Memory cap: evict oldest keys if too many (A7.4)
+            if len(self._requests) > self.MAX_KEYS:
+                keys_to_remove = sorted(
+                    self._requests.keys(),
+                    key=lambda k: self._requests[k][-1] if self._requests[k] else 0,
+                )[:len(self._requests) // 4]
+                for k in keys_to_remove:
+                    del self._requests[k]
+
+            current_count = len(self._requests[key])
+
+            if current_count >= max_requests:
+                return True, 0
+
+            return False, max_requests - current_count
 
     def record_request(self, key: str) -> None:
         """Record a request timestamp for the given key."""
-        self._requests[key].append(time.time())
+        with self._lock:
+            self._requests[key].append(time.time())
 
 
 # Singleton limiter instance
@@ -111,7 +126,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ):
         client_ip = _get_client_ip(request)
-        path = request.url.path
+        path = request.url.path.rstrip("/")  # Normalize trailing slash (A7.3)
         max_requests, window_seconds = _get_rate_limit_config(path)
 
         key = f"{client_ip}:{path}"
