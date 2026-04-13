@@ -235,8 +235,43 @@ async def delete_user(
             pass
 
     email = target_user.email
-    db.delete(target_user)
-    db.commit()
+    try:
+        # Clean up related data that may not have ORM cascade
+        from app.models.application import Application
+        from app.models.connection import Connection
+        from app.models.messaging import ConversationMember, Message
+        from app.models.profile_view import ProfileView
+        from app.models.company import CompanyAdmin
+        from app.models.job import Job
+        from sqlalchemy import or_
+
+        # Delete messages sent by user
+        db.query(Message).filter(Message.sender_id == target_user.id).delete(synchronize_session=False)
+        # Delete conversation memberships
+        db.query(ConversationMember).filter(ConversationMember.user_id == target_user.id).delete(synchronize_session=False)
+        # Delete connections (both directions)
+        db.query(Connection).filter(
+            or_(Connection.requester_id == target_user.id, Connection.addressee_id == target_user.id)
+        ).delete(synchronize_session=False)
+        # Delete applications
+        db.query(Application).filter(Application.user_id == target_user.id).delete(synchronize_session=False)
+        # Delete profile views (both directions)
+        db.query(ProfileView).filter(
+            or_(ProfileView.viewer_id == target_user.id, ProfileView.viewed_id == target_user.id)
+        ).delete(synchronize_session=False)
+        # Remove from company admin roles
+        db.query(CompanyAdmin).filter(CompanyAdmin.user_id == target_user.id).delete(synchronize_session=False)
+        # Close jobs posted by user
+        db.query(Job).filter(Job.posted_by == target_user.id).update({"is_active": False}, synchronize_session=False)
+
+        db.delete(target_user)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete user: {str(e)}",
+        )
 
     log_audit(db, "user_deleted", user_id=admin.id,
               ip_address=get_client_ip(request),

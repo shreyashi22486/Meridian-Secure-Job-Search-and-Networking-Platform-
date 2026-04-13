@@ -35,6 +35,7 @@ CSRF_EXEMPT_PATHS = {
     "/api/auth/login",
     "/api/auth/register",
     "/api/auth/verify-2fa",  # Protected by temp_token JWT, CSRF redundant
+    "/api/auth/refresh",     # Protected by HttpOnly refresh cookie + JTI rotation
     "/api/auth/csrf",
 }
 

@@ -134,9 +134,9 @@ export default function Applicants() {
                                                     <br />
                                                     <span className="text-muted" style={{ fontSize: '0.8rem' }}>{app.applicant_email}</span>
                                                     {app.cover_note && (
-                                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem', fontStyle: 'italic' }}>
-                                                            "{app.cover_note.substring(0, 100)}{app.cover_note.length > 100 ? '...' : ''}"
-                                                        </p>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem', fontStyle: 'italic', padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-xs)', borderLeft: '2px solid var(--primary)' }}>
+                                                            "{app.cover_note}"
+                                                        </div>
                                                     )}
                                                 </div>
                                             </td>
