@@ -76,10 +76,20 @@ DEFAULT_RATE_LIMIT = (60, 60)  # 60 per minute
 
 
 def _get_client_ip(request: Request) -> str:
-    """Extract client IP, respecting X-Forwarded-For behind reverse proxy."""
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """
+    Extract client IP securely behind a reverse proxy.
+
+    Security: We do NOT blindly trust X-Forwarded-For because any client
+    can set it to bypass rate limiting. Instead:
+    1. Trust X-Real-IP (set server-side by Nginx, cannot be spoofed)
+    2. Fall back to the TCP connection IP (request.client.host)
+    """
+    # X-Real-IP is set by our Nginx reverse proxy — trustworthy
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+
+    # Fallback: use the actual TCP connection IP
     return request.client.host if request.client else "unknown"
 
 
