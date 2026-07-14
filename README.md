@@ -1,8 +1,5 @@
 # Meridian — Secure Job Search & Professional Networking Platform
 
-> **CSE 345/545 Foundations of Computer Security** — Course Project  
-> IIIT Delhi | February – April 2026
-
 ## Overview
 
 **Meridian** is a full-stack secure job search and professional networking platform built with security as a first-class requirement. The platform provides encrypted resume storage, TOTP-based two-factor authentication, role-based access control, and comprehensive audit logging.
@@ -123,14 +120,3 @@ pdflatex main.tex       # or milestone2_report.tex
 pdflatex main.tex       # Run twice for TOC
 ```
 
-## Team
-
-| Member | GitHub |
-|--------|--------|
-| Aniket Gupta | [@aniket-3001](https://github.com/aniket-3001) |
-| Angadjeet Singh | [@ANGADJEET](https://github.com/ANGADJEET) |
-| Harsh Kumar | [@hrsh-kr](https://github.com/hrsh-kr) |
-
-## License
-
-This project is developed for academic purposes as part of CSE 345/545 at IIIT Delhi.
